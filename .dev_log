@@ -1,0 +1,51 @@
+## [2026-10-30 16:28] 固化编辑规则
+- **Goal**: 将用户提供的编辑规则保存为独立文件，并在 CLAUDE.md 中引用，使后续会话自动遵守
+- **Changes**: 新增 `EDITING_RULES.md`；`CLAUDE.md` 顶部加入 `@EDITING_RULES.md` 引用；新增 `.cursor_dev_log`
+
+## [2026-10-30 16:29] 改写编辑规则为纯前端（Vue 3 + JavaScript）
+- **Goal**: 项目为纯前端，去掉后端与 TypeScript 相关规则，改为 Vue 3 + JS 规范
+- **Changes**: `EDITING_RULES.md`：删除第 5、6 节（后端分层、Spring Boot）和 IDEA 同步提醒；第 4 节 TS 规则改为 JSDoc + props 校验；"API 数据校验"改为"外部数据边界校验"；更新适用说明与 Role
+
+## [2026-10-30 16:37] Vue 重构 Phase 0：搭建 Vite + Vue 3 框架
+- **Goal**: 在 `stickman-preview/` 原地建立 Vite + Vue 3（JS）项目，保留旧版页面作为对照，海报原样保留
+- **Changes**: `index.html` → `legacy.html`（git mv，内容不变）；`three.min.js`、`male_body.glb`、`mediapipe/` → `public/`（URL 不变）；新增 `package.json`（版本精确固定：vue 3.5.44、pinia 2.3.1、three 0.149.0、@mediapipe/tasks-vision 0.10.14、vite 6.4.4 等）、`package-lock.json`、`vite.config.js`（端口 8000、构建时复制 `poster/`）、`eslint.config.js`、`.gitignore`、新 `index.html`、`src/main.js`、`src/App.vue`
+
+## [2026-10-30 16:41] Vue 重构 Phase 1：拆分纯逻辑模块
+- **Goal**: 把 legacy.html 中与 DOM 无关的逻辑拆成 ES 模块（显式输入、无 DOM、无全局变量），行为与旧版完全一致
+- **Changes**: 新增 `src/core/math.js`（向量工具、C）、`src/core/skeleton.js`（B、cycle、base、gait、solve、lerpQ、angle3；gSm/gK 改为 `ground` + `settleGround`）、`src/core/actions.js`（ACT 及 rep.cam 辅助函数，原文搬移）、`src/pose/fit.js`（FIT 逐字搬移为 `createFit()`，另含 FIT_KEY/fitKeyOf/isFitAction）、`src/i18n/messages.js`（I18N、LANGS、translate）、`src/sim/muscles.js`（ZONE、MUS、effortOf、updateMuscles）、`src/sim/load.js`、`src/sim/metrics.js`（updateMetrics、setHeartRate、keytel、cadenceOf、zoneOf）、`src/sim/bio.js`（updateBio、bioView）、`src/sim/hydration.js`（含 sanitizeWater 校验）、`src/sim/balance.js`（balanceOf、smoothBalance）；新旧对比 8640 帧、约 188 万项比较，差值为 0
+
+## [2026-10-30 16:48] Vue 重构 Phase 2：拆分渲染层与图表
+- **Goal**: 把 legacy.html 的 Three.js 渲染、2D 叠加层和卡片图表拆成独立模块（不依赖 DOM 结构和全局状态），画面与旧版一致
+- **Changes**: 新增 `src/render/`：`anatomy.js`（ANAT、SEG）、`sdfBody.js`（光线步进实体）、`rig.js`（RJ、RM、MJ、bodyD、makeRig、trunkH）、`poser.js`（poseBones、blend、girdleW、gripOf）、`hand.js`（makeFist、applyFist，grip 改为参数）、`particles.js`（粒子人体、血管、心脏、漂浮粒子）、`moire.js`（摩尔纹材质与关节亮点）、`glb.js`（parseGlb）、`bodyModel.js`（模型加载、蒙皮、热扩散权重）、`stage.js`（createStage：场景、相机、眼睛、哑铃、地面、color/mode/resize/watchPerf/render/project）、`overlay.js`（关节角度弧线与关键点）；新增 `src/charts/`：`chart.js`、`hr.js`、`kcal.js`、`trend.js`、`angle.js`、`balance.js`、`load.js`、`therm.js`；删除从未触发的 "+1" 气泡（pops、rr）；`vite.config.js` 增加 `optimizeDeps.include: ['three']`
+
+## [2026-10-30 16:53] Vue 重构 Phase 3：主循环 + 演示模式最小界面
+- **Goal**: 用不依赖 Vue 的 engine 驱动演示模式，在 Vue 页面里渲染舞台；支持动作切换、三种显示方式、视角预设和拖动旋转
+- **Changes**: 新增 `src/engine/engine.js`（createEngine：每帧姿势→骨架→计数→模拟→渲染→叠加层，状态集中在 S；setAction/setView/dragBy/setMode/setColor/setHeartRate/onFrame/onTick 等）、`src/engine/reps.js`（ruleOf、showOf、updateRep，自 legacy updateRep 移植）、`src/composables/useEngine.js`（provideEngine/useEngine/useFrame，live 只在值变化时写入）、`src/components/StageView.vue`（画布、拖动、ResizeObserver、暗色舞台、无 WebGL 提示）；`src/App.vue` 改为临时控制栏（Phase 4 替换）；12 个动作各跑 6 秒，计数与状态和 legacy.html 完全一致
+
+## [2026-10-30 17:00] Vue 重构 Phase 4：正式界面、状态、多语言、样式
+- **Goal**: 用 Vue 组件还原 legacy.html 的整套界面（顶栏、左右两栏卡片、舞台读数、底栏、面板），接入 Pinia 状态与多语言，布局与旧版一致
+- **Changes**: 新增 `src/utils/storage.js`（带校验的 localStorage，沿用 stick.* 键）、`src/stores/settings.js`（语言、显示开关、颜色、视角、布局）、`src/stores/profile.js`、`src/stores/hydration.js`、`src/i18n/useI18n.js`、`src/composables/useChart.js`、`src/composables/useLayout.js`（useSplit、useLayoutVars）；组件 `TopBar`、`BottomBar`、`SplitHandle`、`stage/`（StageHeader、ThermCard、MusclePanel、RepCounter、AngleGauge）、`left/`（BalanceCard、HydrationCard、SweatCard、LoadCard）、`right/`（HeartRateCard、EnergyCard、VitalsCard）、`drawer/`（SettingsDrawer、DisplayOptions、ProfileForm、SessionLog、DataNotes）；旧 CSS 拆入 `src/styles/`（id 选择器改为类名，删除未使用的 pop 动画）；engine 增加 S.met、S.real，useEngine 的 live 增加 speed/camOn/real/setsN；App.vue 改为正式布局并暴露 window.stickman.setHeartRate；可拖动分隔条提前在本阶段完成
+
+## [2026-10-30 17:30] Vue 重构 Phase 5：摄像头模式
+- **Goal**: 接入摄像头：实时跟随 / 动作复现、FIT 计数、镜像、状态提示、预览窗口，行为与 legacy.html 一致
+- **Changes**: 新增 `src/pose/camera.js`（oneEuro、camSeed、camIngest、camSolve、camDraw、loadLandmarker，MediaPipe 改用 npm 包 @mediapipe/tasks-vision 0.10.14，wasm 与模型仍由 public/mediapipe/ 提供，文件与原版逐字节相同）、`src/engine/camera.js`（createCamera：getUserMedia、requestVideoFrameCallback 逐帧检测、错误提示、fps 状态）、`src/components/stage/CamPreview.vue`；`engine.js` 加入 setSource/setCamView/setMirror/attachCamera、fitEvents、replayAdd、摄像头分支的循环逻辑（自 legacy loop 移植）；`TopBar.vue` 加入演示/摄像头切换、实时跟随/动作复现、镜像、状态；`BottomBar.vue` 摄像头模式下禁用播放和速度；`settings.js` 持久化 stick.camView；`useEngine.js` 的 live 改为 shallowReactive 并增加摄像头字段
+
+## [2026-10-30 17:33] Vue 重构 Phase 6：收尾（删除 legacy.html 待确认）
+- **Goal**: 打包与启动脚本改为提供 dist/，检查无 WebGL / 减少动态效果 / 打包版本，更新文档
+- **Changes**: `serve.ps1` 增加 `-Root`（默认 dist，缺少 index.html 时提示先构建）；`start.bat` 缺少 dist/ 时先 npm install + npm run build，再启动 serve.ps1；`vite.config.js` 把 three 单独打包（消除 500 kB 警告）；`README.md` 更新启动方式、文件表并新增「代码结构」；`CLAUDE.md` 按 Vue 架构重写；`EDITING_RULES.md` 更新适用说明；未删除 `legacy.html` 与 `public/mediapipe/vision_bundle.mjs`（等待确认）
+
+## [2026-10-30 17:35] 开发日志改名
+- **Goal**: 开发日志文件名由 .cursor_dev_log 改为 .dev_log
+- **Changes**: `.cursor_dev_log` → `.dev_log`（上面的历史记录保持原文）；`EDITING_RULES.md`、`CLAUDE.md`、`.prompt.md` 中的引用同步更新
+
+## [2026-10-30 17:36] 删除重构前的旧版页面
+- **Goal**: 用户确认后删除只用于对照的旧版单文件页面及其专用脚本，完成 Vue 重构
+- **Changes**: 删除 `stickman-preview/legacy.html`、`stickman-preview/public/mediapipe/vision_bundle.mjs`（git rm；仍可在 git 历史 e190d2e 中找到）；`README.md` 文件表去掉 legacy.html 一行；`eslint.config.js` 去掉 legacy.html 的忽略项；lint 与 build 通过
+
+## [2026-10-30 17:37] 用中文重写根目录 README
+- **Goal**: 根目录 README.md 原来只有标题，改为中文的项目说明
+- **Changes**: `README.md`：项目简介、快速开始、目录说明、模型署名；详细内容链接到 `stickman-preview/README.md`
+
+## [2026-10-30 17:38] 简化根目录 README
+- **Goal**: 面向其他开发者（可能没有 Vue 基础）精简 README
+- **Changes**: `README.md`：只保留运行方法、「想改什么去哪里」对照表、Vue 文件的三段结构和「引擎计算、界面只显示」的说明、署名
