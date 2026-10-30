@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>未来フィットネス 2126 · ポスター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;800&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#BEC3AD;--paper:#E9E8D8;--ink:#1D231E;--ivory:#F1F0E2;--acc:#E0704A;--muted:#5E665A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Noto Sans JP",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+header{padding:28px 32px 8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
+header h1{margin:0;font:600 15px/1.2 Unbounded,sans-serif;letter-spacing:.03em}
+header p{margin:0;color:var(--muted);max-width:72ch}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:28px;padding:20px 32px 40px;align-items:start}
+figure{margin:0}
+.sheet{position:relative}
+canvas{display:block;width:100%;height:auto;aspect-ratio:600/847;background:var(--paper);box-shadow:0 1px 0 rgba(29,35,30,.08),0 18px 40px -24px rgba(29,35,30,.45)}
+/* trim line: the 3 mm bleed outside it is cut off after printing */
+.trim{position:absolute;inset:calc(3/847*100%) calc(3/600*100%);outline:1px dashed rgba(29,35,30,.35);pointer-events:none}
+figcaption{margin-top:14px}
+figcaption b{display:block;font:600 13px/1.3 Unbounded,sans-serif}
+figcaption span{display:block;color:var(--muted);margin-top:4px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button{font:500 12px/1 "Noto Sans JP",sans-serif;color:var(--ivory);background:var(--ink);border:0;border-radius:999px;padding:9px 14px;cursor:pointer}
+button.sub{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(29,35,30,.35)}
+button:disabled{opacity:.4;cursor:default}
+#msg{padding:0 32px 32px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>未来フィットネス 2126 · ポスター（A1）</h1>
+</header>
+<main>
+  <figure><div class="sheet"><canvas id="pA"></canvas><div class="trim"></div></div>
+    <figcaption><b>A · ハーフトーン</b>
+    <div class="btns"><button data-print="A" disabled>A1 印刷用 300 dpi</button><button class="sub" data-prev="A" disabled>プレビュー PNG</button></div></figcaption></figure>
+  <figure><div class="sheet"><canvas id="pB"></canvas><div class="trim"></div></div>
+    <figcaption><b>B · ジオメトリック</b>
+    <div class="btns"><button data-print="B" disabled>A1 印刷用 300 dpi</button><button class="sub" data-prev="B" disabled>プレビュー PNG</button></div></figcaption></figure>
+  <figure><div class="sheet"><canvas id="pC"></canvas><div class="trim"></div></div>
+    <figcaption><b>C · 手描きウェーブ</b>
+    <div class="btns"><button data-print="C" disabled>A1 印刷用 300 dpi</button><button class="sub" data-prev="C" disabled>プレビュー PNG</button></div></figcaption></figure>
+  <figure><div class="sheet"><canvas id="pD"></canvas><div class="trim"></div></div>
+    <figcaption><b>D · 線刻</b>
+    <div class="btns"><button data-print="D" disabled>A1 印刷用 300 dpi</button><button class="sub" data-prev="D" disabled>プレビュー PNG</button></div></figcaption></figure>
+  <figure><div class="sheet"><canvas id="pE"></canvas><div class="trim"></div></div>
+    <figcaption><b>E · 等高線</b>
+    <div class="btns"><button data-print="E" disabled>A1 印刷用 300 dpi</button><button class="sub" data-prev="E" disabled>プレビュー PNG</button></div></figcaption></figure>
+  <figure><div class="sheet"><canvas id="pF"></canvas><div class="trim"></div></div>
+    <figcaption><b>F · リソグラフ</b>
+    <div class="btns"><button data-print="F" disabled>A1 印刷用 300 dpi</button><button class="sub" data-prev="F" disabled>プレビュー PNG</button></div></figcaption></figure>
+</main>
+<p id="msg"></p>
+<script src="figure-a.js"></script>
+<script src="figures.js"></script>
+<script>
+(async () => {
+  // Layout units: the trimmed A1 sheet is 1800 × 2548 units (594 × 841 mm, 1 unit ≈ 0.33 mm). The 3 mm bleed adds
+  // BL units on every side; backgrounds and texture run into it, everything that matters stays well inside the trim.
+  // A poster is drawn once per scale k: k = 1 for the on-screen preview, k ≈ 3.9 for 300 dpi print.
+  const W = 1800, H = 1800 * 841 / 594, BL = 1800 * 3 / 594, LW = W + 2 * BL, LH = H + 2 * BL;
+  const PRINT_W = Math.round(600 / 25.4 * 300), PRINT_H = Math.round(847 / 25.4 * 300);   // 7087 × 10004 px
+  const C = { paper: '#E9E8D8', ink: '#1D231E', ivory: '#F1F0E2', acc: '#E0704A' };
+  // every Japanese character drawn on the canvases (the web font only loads the glyph ranges asked for)
+  const JA = '未来フィットネスシステム体を読む全身オンライン深部温心拍数呼吸回分血中酸素乳大腿四頭筋出力関節負荷膝三角すべての筋肉に、値があるデータは概念シミュレーション・マシンが項目リアルタイム計測レポート中接続' +
+    '測るほど、強くなる。スキャン身長' +
+    'からだの地形図年、は地図になる。握力等高線＝体表熱量概念北' +            // E
+    '年後も、しゃがむ。膝角度';                                               // F
+  const fz = '"Noto Sans JP", sans-serif', fu = 'Unbounded, sans-serif';
+  try {
+    await Promise.all(['500', '700', '900'].map(w => document.fonts.load(`${w} 40px "Noto Sans JP"`, JA)));
+    await Promise.all(['500', '600', '800'].map(w => document.fonts.load(`${w} 40px Unbounded`, 'BODY ONLINE SCAN FUTURE FITNESS SERIES FFS SIMULATED DATA TOPOGRAPHY RISO EDITION YEARS LATER 0123456789.%×℃/·|°')));
+  } catch (e) {}
+  const seeded = seed => { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+
+  // ---------- shared ----------
+  function sheet(cv, k) {                          // size the canvas for scale k ('print' = 300 dpi); drawing coordinates = trim units
+    if (k === 'print') { cv.width = PRINT_W; cv.height = PRINT_H; } else { cv.width = Math.round(LW * k); cv.height = Math.round(LH * k); }
+    const x = cv.getContext('2d');
+    x.setTransform(cv.width / LW, 0, 0, cv.height / LH, BL * cv.width / LW, BL * cv.height / LH);
+    x.fillStyle = C.paper; x.fillRect(-BL, -BL, LW, LH);
+    return x;
+  }
+  function grain(x, amt, rnd) {                    // print grain, one speck per layout unit (≈ 0.33 mm) at any scale
+    const n = document.createElement('canvas'); n.width = Math.ceil(LW); n.height = Math.ceil(LH);
+    const g = n.getContext('2d'), im = g.createImageData(n.width, n.height), d = im.data;
+    for (let i = 0; i < d.length; i += 4) { const v = 128 + (rnd() - 0.5) * amt * 2; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; }
+    g.putImageData(im, 0, 0);
+    x.save(); x.globalCompositeOperation = 'overlay'; x.imageSmoothingEnabled = false; x.drawImage(n, -BL, -BL, n.width, n.height); x.restore();
+  }
+  function fitText(x, s, font, maxW, size) {       // largest size (≤ size) that fits maxW
+    for (; size > 10; size -= 4) { x.font = font.replace('#', size); if (x.measureText(s).width <= maxW) break; }
+    return size;
+  }
+  function label(x, px, py, name, val, unit, col) {   // returns the label's width
+    x.fillStyle = col; x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+    x.font = `700 30px ${fz}`; x.fillText(name, px, py);
+    x.font = `600 58px ${fu}`; x.fillText(val, px, py + 70); const w = x.measureText(val).width;
+    x.font = `500 26px ${fz}`; x.fillText(unit, px + w + 12, py + 70);
+    return w + 12 + x.measureText(unit).width;
+  }
+
+  // ---------- A · halftone scan ----------
+  // The figure is the project's human model (male_body.glb) rendered with simple light. That render is baked into
+  // figure-a.js (bake-figure-a.ps1) so this page needs no WebGL and no file loading; its shading becomes the dot sizes.
+  let shade = null;
+  async function shadeA() {
+    if (shade) return shade;
+    const F = window.FIG_A; if (!F) throw new Error('figure-a.js がありません');
+    const im = new Image(); im.src = F.img; await im.decode();
+    const RW = F.rw, RH = F.rh, u = W / RW;          // layout units per pixel of the baked image
+    const t = document.createElement('canvas'); t.width = RW; t.height = RH; const tx = t.getContext('2d', { willReadFrequently: true });
+    tx.drawImage(im, F.box[0], F.box[1]); const img = tx.getImageData(0, 0, RW, RH).data;
+    const at = (px, py) => {                         // bilinear: grey (light) and alpha (body) at a layout point
+      const fx = Math.min(RW - 1.001, Math.max(0, px / u - 0.5)), fy = Math.min(RH - 1.001, Math.max(0, py / u - 0.5)), ix = fx | 0, iy = fy | 0, ax = fx - ix, ay = fy - iy;
+      let L = 0, A = 0;
+      for (const [dx, dy, w] of [[0, 0, (1 - ax) * (1 - ay)], [1, 0, ax * (1 - ay)], [0, 1, (1 - ax) * ay], [1, 1, ax * ay]]) {
+        const i = ((iy + dy) * RW + ix + dx) * 4, a = img[i + 3] / 255; L += img[i] / 255 * a * w; A += a * w;
+      }
+      return [A > 0 ? L / A : 0, A];
+    };
+    // coarse mask, blurred, for the stray dots around the body (the particle halo)
+    const MW = Math.ceil(W / 8), MH = Math.ceil(H / 8); let bl = new Float32Array(MW * MH);
+    for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) bl[j * MW + i] = at(i * 8 + 4, j * 8 + 4)[1] > 0.5 ? 1 : 0;
+    for (let it = 0; it < 6; it++) { const o = new Float32Array(MW * MH); for (let j = 1; j < MH - 1; j++) for (let i = 1; i < MW - 1; i++) { let s = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) s += bl[(j + b) * MW + i + a]; o[j * MW + i] = s / 9; } bl = o; }
+    const near = (px, py) => bl[Math.min(MH - 1, Math.max(0, py / 8 | 0)) * MW + Math.min(MW - 1, Math.max(0, px / 8 | 0))] || 0;
+    return (shade = { at, near, pts: F.pts });
+  }
+  async function posterA(cv, k) {
+    const { at, near, pts: an } = await shadeA(), x = sheet(cv, k), rnd = seeded(11);
+    // dots on a 45° screen
+    const s = 15, c = Math.SQRT1_2, N = Math.ceil(1800 / s);
+    x.fillStyle = C.ink;
+    for (let a = -N; a <= N; a++) for (let b = -N; b <= N; b++) {
+      const px = W / 2 + (a - b) * s * c, py = H / 2 + (a + b) * s * c;
+      if (px < -BL || px > W + BL || py < -BL || py > H + BL) continue;
+      const [L, A] = at(px, py); let rr = 0;
+      if (A > 0.5) rr = s * 0.62 * Math.sqrt(0.2 + 0.8 * (1 - L));
+      else { const n = near(px, py); if (n > 0.02 && rnd() < n * 0.45) rr = 1.6 + rnd() * s * 0.16; }
+      const jx = (rnd() - 0.5) * 1.2, jy = (rnd() - 0.5) * 1.2;
+      if (rr > 0.8) { x.beginPath(); x.arc(px + jx, py + jy, rr, 0, 7); x.fill(); }
+    }
+    // data read by the machine: points on the body, labels in the open space on the left
+    const pts = [
+      [an[0], '深部体温', '37.2', '℃'], [an[1], '心拍数', '112', 'BPM'], [an[2], '呼吸数', '18', '回/分'],
+      [an[3], '血中酸素 SpO₂', '98', '%'], [an[4], '血中乳酸', '2.4', 'mmol/L'], [an[5], '大腿四頭筋 出力', '82', '%']
+    ].sort((p, q) => p[0][1] - q[0][1]);
+    pts.forEach(([[qx, qy], n, v, u], i) => {
+      const ly = 400 + i * 178, w = label(x, 90, ly, n, v, u, C.ink), ex = 90 + w + 26, ey = ly + 52;
+      x.strokeStyle = C.ink; x.lineWidth = 2.5; x.beginPath(); x.moveTo(ex, ey); x.lineTo(ex + 34, ey); x.lineTo(qx, qy); x.stroke();
+      x.fillStyle = C.acc; x.beginPath(); x.arc(qx, qy, 11, 0, 7); x.fill(); x.lineWidth = 3; x.strokeStyle = C.ink; x.stroke();
+    });
+    // huge headline over the legs, like the reference
+    x.fillStyle = C.acc; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+    x.font = `900 540px ${fz}`; x.fillText('体を', 40, H - 570); x.fillText('読む', 40, H - 70);
+    x.font = `600 28px ${fu}`; x.fillText('FFS', 90, 120); x.fillText('2126', 90, 154);
+    x.font = `700 28px ${fz}`; x.fillText('未来フィットネスシステム', 230, 120); x.font = `500 26px ${fz}`; x.fillText('マシンが全身 128 項目をリアルタイム計測 · 概念シミュレーション', 230, 154);
+    // the figure comes from a CC BY 4.0 model: the licence requires this credit on the print too
+    x.fillStyle = C.ink; x.textAlign = 'right'; x.font = `500 18px ${fu}`;
+    x.fillText('3D MODEL: “MALE BODY” BY ALEXANDER ANTIPOV, CC BY 4.0', W - 60, H - 40);
+    grain(x, 14, rnd);
+  }
+
+  // ---------- B · geometric blocks ----------
+  function rr4(x, X, Y, w, h, tl, tr, br, bl) {
+    x.beginPath(); x.moveTo(X + tl, Y); x.lineTo(X + w - tr, Y); x.arcTo(X + w, Y, X + w, Y + tr, tr); x.lineTo(X + w, Y + h - br); x.arcTo(X + w, Y + h, X + w - br, Y + h, br);
+    x.lineTo(X + bl, Y + h); x.arcTo(X, Y + h, X, Y + h - bl, bl); x.lineTo(X, Y + tl); x.arcTo(X, Y, X + tl, Y, tl); x.closePath();
+  }
+  function posterB(cv, k) {
+    const x = sheet(cv, k), rnd = seeded(23);
+    const M = 90, G = 24, cw = (W - 2 * M - 2 * G) / 3, top = 90, rh = (H - top - 330 - 3 * G) / 4, R = cw / 2;
+    const X = i => M + i * (cw + G), Y = j => top + j * (rh + G), hh = n => n * rh + (n - 1) * G;
+    // colours from the app's tiles: slate blue and olive cross over diagonally (left arm / right leg, right arm / left leg),
+    // sage head, ink chest with the orange heart, light-blue belly
+    const BLUE = '#5E7BA4', OLIVE = '#6F7F5A', SAGE = '#BEC3AD', LBLUE = '#A9B7C8';
+    const blk = (col, ...a) => { x.fillStyle = col; rr4(x, ...a); x.fill(); };
+    blk(BLUE, X(0), Y(0), cw, hh(2), R, R, 0, 0);                   // raised arms
+    blk(OLIVE, X(2), Y(0), cw, hh(2), R, R, 0, 0);
+    x.fillStyle = SAGE; x.beginPath(); x.arc(X(1) + cw / 2, Y(0) + rh / 2, Math.min(cw, rh) / 2, 0, 7); x.fill();   // head
+    blk(C.ink, X(1), Y(1), cw, rh, 0, 0, 0, 0);                     // chest
+    blk(LBLUE, X(1), Y(2), cw, rh, 0, 0, R * 0.35, R * 0.35);       // belly
+    const lw = (cw - G) / 2;                                         // legs: two narrow pills under the torso
+    blk(OLIVE, X(1), Y(3), lw, rh, 0, 0, lw / 2, lw / 2);
+    blk(BLUE, X(1) + lw + G, Y(3), lw, rh, 0, 0, lw / 2, lw / 2);
+    const hx = X(1) + cw / 2, hy = Y(1) + rh / 2, hr = Math.min(cw, rh) / 2;
+    x.fillStyle = C.acc; x.beginPath(); x.arc(hx, hy, hr * 0.92, 0, 7); x.fill();   // the heart
+    const inBlock = (px, py, n, v, u, al, col) => {
+      x.fillStyle = col || C.ivory; x.textAlign = al || 'left';
+      x.font = `700 32px ${fz}`; x.fillText(n, px, py);
+      x.font = `600 92px ${fu}`; x.fillText(v, px, py + 104);
+      if (u) { x.font = `500 28px ${fz}`; x.fillText(u, px, py + 150); }
+    };
+    inBlock(X(0) + 52, Y(1) + rh - 170, '三角筋 出力', '72%', '');
+    inBlock(X(2) + 52, Y(1) + rh - 170, '血中酸素 SpO₂', '98%', '');
+    inBlock(hx, Y(0) + rh / 2 - 40, '深部体温', '37.2', '℃', 'center', C.ink);
+    inBlock(hx, hy - 40, '心拍数', '112', 'BPM', 'center');
+    inBlock(X(1) + 52, Y(2) + 80, '血中乳酸', '2.4', 'mmol/L', 'left', C.ink);
+    // the open space beside the legs: leg readings in ink, pointing at the legs
+    const outside = (px, py, n, v, al, qx, qy) => {
+      x.fillStyle = C.ink; x.textAlign = al; x.font = `700 32px ${fz}`; x.fillText(n, px, py); x.font = `600 92px ${fu}`; x.fillText(v, px, py + 104);
+      const ex = al === 'left' ? px + x.measureText(v).width + 24 : px - x.measureText(v).width - 24;
+      x.strokeStyle = C.ink; x.lineWidth = 2.5; x.beginPath(); x.moveTo(ex, py + 70); x.lineTo(qx, qy); x.stroke();
+      x.fillStyle = C.acc; x.beginPath(); x.arc(qx, qy, 12, 0, 7); x.fill();
+    };
+    outside(X(0) + 20, Y(2) + 130, '大腿四頭筋 出力', '82%', 'left', X(1) + lw * 0.5, Y(3) + rh * 0.25);
+    outside(X(2) + cw - 20, Y(2) + 130, '筋酸素 SmO₂', '64%', 'right', X(1) + lw * 1.5 + G, Y(3) + rh * 0.55);
+    // a scan target with the knee load
+    const tx = X(2) + cw / 2 - 40, ty = Y(3) + rh / 2 + 10;
+    x.strokeStyle = C.ink; x.lineWidth = 2.5;
+    for (const r of [60, 105]) { x.beginPath(); x.arc(tx, ty, r, 0, 7); x.stroke(); }
+    x.beginPath(); x.moveTo(tx - 150, ty); x.lineTo(tx + 150, ty); x.moveTo(tx, ty - 150); x.lineTo(tx, ty + 150); x.stroke();
+    x.fillStyle = C.acc; x.beginPath(); x.arc(tx + 36, ty - 26, 12, 0, 7); x.fill();
+    x.fillStyle = C.ink; x.textAlign = 'center'; x.font = `700 30px ${fz}`; x.fillText('関節負荷 · 膝', tx, ty + 190);
+    x.font = `600 48px ${fu}`; x.fillText('2.1×', tx, ty + 246);
+    x.strokeStyle = C.ink; x.lineWidth = 2.5; x.beginPath(); x.moveTo(tx - 150, ty); x.lineTo(X(1) + lw * 2 + G + 4, Y(3) + rh * 0.3); x.stroke();
+    // scan line across the chest, running into the bleed
+    x.fillStyle = C.acc; x.fillRect(-BL, Y(1) + rh * 0.3, W + 2 * BL, 5);
+    x.textAlign = 'right'; x.font = `600 22px ${fu}`; x.fillText('SCAN 064 / 128', W - 40, Y(1) + rh * 0.3 - 14);
+    // footer like a series poster
+    const fy = H - 170;
+    x.fillStyle = C.ink; x.textAlign = 'left';
+    x.font = `900 52px ${fz}`; x.fillText('未来フィットネス', M, fy);
+    x.font = `600 22px ${fu}`; x.fillText('FUTURE FITNESS  |  2126 SERIES', M, fy + 42);
+    x.font = `600 52px ${fu}`; x.fillText('001', M + 560, fy);
+    x.font = `500 24px ${fz}`; x.fillText('全身 128 項目をリアルタイム計測', M + 560, fy + 42);
+    const lx = W / 2 + 180, ly = fy - 18;
+    x.beginPath(); x.arc(lx, ly, 34, 0, 7); x.fill();
+    x.fillStyle = C.acc; x.beginPath(); x.moveTo(lx, ly); x.arc(lx, ly, 34, -Math.PI / 2, 0); x.closePath(); x.fill();
+    x.fillStyle = C.ink; x.textAlign = 'right';
+    x.font = `700 28px ${fz}`; x.fillText('すべての筋肉に、数値がある', W - M, fy - 6);
+    x.font = `500 24px ${fz}`; x.fillText('データは概念シミュレーション · SIMULATED DATA', W - M, fy + 36);
+    grain(x, 10, rnd);
+  }
+
+  // ---------- C · wavy hand-drawn ----------
+  function posterC(cv, k) {
+    const x = sheet(cv, k), rnd = seeded(37);
+    // the figure on its own layer: flat colour, wavy outlines, then a mottled print texture
+    const f = document.createElement('canvas'); f.width = cv.width; f.height = cv.height;
+    const g = f.getContext('2d'); g.setTransform(x.getTransform());
+    const kf = 1.95, ox = 950 - 548 * kf, oy = 720 - 124 * kf, T = p => [ox + p[0] * kf, oy + p[1] * kf];
+    const J = { head: [560, 205], neck: [542, 292], chest: [528, 385], pel: [500, 630],
+      shF: [520, 372], elF: [392, 455], haF: [318, 352], shB: [540, 372], elB: [660, 470], haB: [700, 575],
+      hiF: [492, 628], knF: [348, 690], anF: [360, 880], toF: [288, 905], hiB: [510, 628], knB: [615, 780], anB: [770, 845], toB: [820, 905] };
+    g.fillStyle = C.acc;
+    const wavyCircle = (c, r0, amp, lobes, ph) => {
+      const [px, py] = T(c); g.beginPath();
+      for (let i = 0; i <= 96; i++) { const a = i / 96 * Math.PI * 2, rr = r0 * (1 + amp * Math.sin(a * lobes + ph)) * kf; i ? g.lineTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr) : g.moveTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr); }
+      g.fill();
+    };
+    const limb = (a, b, wa, wb, amp, ph) => {
+      const A = J[a], B = J[b], dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy), nx = -dy / L, ny = dx / L, n = 40, Lp = [], Rp = [];
+      for (let i = 0; i <= n; i++) {
+        const t = i / n, w = (wa + (wb - wa) * t) / 2, wl = w * (1 + amp * Math.sin(ph + t * L / 26)), wr = w * (1 + amp * Math.sin(ph + 2.1 + t * L / 23));
+        const px = A[0] + dx * t, py = A[1] + dy * t;
+        Lp.push(T([px + nx * wl, py + ny * wl])); Rp.push(T([px - nx * wr, py - ny * wr]));
+      }
+      g.beginPath(); Lp.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); for (let i = Rp.length - 1; i >= 0; i--) g.lineTo(Rp[i][0], Rp[i][1]); g.fill();
+      wavyCircle(A, wa / 2, amp * 0.8, 5, ph); wavyCircle(B, wb / 2, amp * 0.8, 5, ph + 1);
+    };
+    limb('shB', 'elB', 58, 50, 0.12, 0.3); limb('elB', 'haB', 50, 42, 0.12, 1.7);
+    limb('hiB', 'knB', 90, 74, 0.1, 2.2); limb('knB', 'anB', 72, 52, 0.12, 0.6); limb('anB', 'toB', 50, 40, 0.1, 1.1);
+    limb('chest', 'pel', 168, 140, 0.07, 0.9); limb('neck', 'chest', 70, 110, 0.08, 2.5);
+    limb('hiF', 'knF', 94, 76, 0.1, 1.4); limb('knF', 'anF', 74, 52, 0.12, 2.9); limb('anF', 'toF', 50, 40, 0.1, 0.2);
+    limb('shF', 'elF', 60, 50, 0.12, 2.0); limb('elF', 'haF', 50, 42, 0.12, 0.8);
+    wavyCircle(J.head, 78, 0.05, 7, 0.4); wavyCircle(J.haF, 30, 0.15, 5, 0); wavyCircle(J.haB, 30, 0.15, 5, 1);
+    // print texture: patchy ink density, computed per layout unit so it looks the same at any scale
+    const m = document.createElement('canvas'); m.width = Math.ceil(LW); m.height = Math.ceil(LH);
+    const mx = m.getContext('2d'), im = mx.createImageData(m.width, m.height), d = im.data;
+    for (let py = 0; py < m.height; py++) for (let px = 0; px < m.width; px++) {
+      const n = 0.5 + 0.5 * Math.sin(px * 0.013 + Math.sin(py * 0.009) * 2.0) * Math.sin(py * 0.011 + Math.sin(px * 0.007) * 1.7), i = (py * m.width + px) * 4;
+      d[i + 3] = 255 * (0.84 + 0.12 * n + 0.06 * rnd());
+    }
+    mx.putImageData(im, 0, 0);
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'destination-in'; g.imageSmoothingEnabled = true; g.drawImage(m, 0, 0, f.width, f.height); g.restore();
+    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(f, 0, 0); x.restore();
+    // white details: eyes, an ECG trace across the chest, sensor rings on the joints; orange signal squiggles by the head
+    x.strokeStyle = C.paper; x.fillStyle = C.paper; x.lineCap = 'round'; x.lineJoin = 'round';
+    for (const dxe of [-40, 10]) {
+      const [ex, ey] = T([J.head[0] + dxe, J.head[1] - 6]);
+      x.beginPath(); x.ellipse(ex, ey, 26 * kf / 1.85, 15 * kf / 1.85, 0, 0, 7); x.fill();
+      x.fillStyle = C.ink; x.beginPath(); x.ellipse(ex - 6, ey, 6, 13, 0, 0, 7); x.fill(); x.fillStyle = C.paper;
+    }
+    x.lineWidth = 9; x.beginPath();
+    const ecg = [[-80, 0], [-38, 0], [-26, -14], [-14, 0], [-4, 0], [6, 38], [18, -88], [30, 22], [40, 0], [56, 0], [70, -18], [86, 0], [110, 0]];
+    ecg.forEach(([ex, ey], i) => { const [px, py] = T([J.chest[0] - 18 + ex * 0.62, J.chest[1] + 70 + ey * 0.8]); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+    x.lineWidth = 6;
+    for (const n of ['elF', 'elB', 'knF', 'knB', 'anF']) { const [px, py] = T(J[n]); x.beginPath(); x.arc(px, py, 20, 0, 7); x.stroke(); x.beginPath(); x.arc(px, py, 6, 0, 7); x.fill(); }
+    for (const [sx, sy, a] of [[-150, -20, Math.PI + 0.25], [-150, 25, Math.PI - 0.12], [-140, 70, Math.PI - 0.45]]) {
+      x.beginPath();
+      for (let i = 0; i <= 24; i++) { const t = i / 24, L = 120 * t, w = 12 * Math.sin(t * Math.PI * 5); const [bx, by] = T([J.head[0] + sx * 0.6 - 30, J.head[1] + sy]); const px = bx + Math.cos(a) * L - Math.sin(a) * w, py = by + Math.sin(a) * L + Math.cos(a) * w; i ? x.lineTo(px, py) : x.moveTo(px, py); }
+      x.strokeStyle = C.acc; x.lineWidth = 7; x.stroke();
+    }
+    const tag = (n, v, p, dx, dy) => {
+      const [px, py] = T(J[p]); x.strokeStyle = C.ink; x.lineWidth = 3; x.beginPath(); x.moveTo(px, py); x.lineTo(px + dx, py + dy); x.stroke();
+      x.fillStyle = C.ink; x.textAlign = dx < 0 ? 'right' : 'left'; x.font = `700 30px ${fz}`; x.fillText(n, px + dx + (dx < 0 ? -12 : 12), py + dy - 8);
+      x.font = `600 46px ${fu}`; x.fillText(v, px + dx + (dx < 0 ? -12 : 12), py + dy + 44);
+    };
+    tag('心拍数', '156', 'shB', 300, -150); tag('血中乳酸', '4.1', 'knB', 230, 40); tag('関節負荷', '2.6×', 'knF', -170, 120);
+    // headline
+    x.fillStyle = C.ink; x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+    x.font = `900 300px ${fz}`; x.fillText('全身', 70, 350);
+    const f2 = fitText(x, 'オンライン', `900 #px ${fz}`, 1080, 300); x.font = `900 ${f2}px ${fz}`; x.fillText('オンライン', 70, 350 + f2 * 1.08);
+    const fs = fitText(x, 'BODY ONLINE', `800 #px ${fu}`, W - 140, 230); x.font = `800 ${fs}px ${fu}`; x.fillText('BODY ONLINE', 70, H - 90);
+    x.font = `700 30px ${fz}`; x.textAlign = 'right'; x.fillText('未来フィットネス · 2126', W - 80, 120);
+    x.font = `500 26px ${fz}`; x.fillText('すべての筋肉がレポート中 · 概念シミュレーション', W - 80, 160);
+    grain(x, 16, rnd);
+  }
+
+  // ---------- D · line engraving ----------
+  function vertical(x, s, cx, top, size, col) {   // one column of vertical Japanese; 、。 sit at the top right of their cell
+    x.fillStyle = col; x.font = `900 ${size}px ${fz}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    [...s].forEach((ch, i) => { const cy = top + size * (i + 0.5) * 1.02, p = '、。'.includes(ch); x.fillText(ch, cx + (p ? size * 0.55 : 0), cy - (p ? size * 0.55 : 0)); });
+    x.textBaseline = 'alphabetic';
+  }
+  async function posterD(cv, k) {
+    const { at } = await shadeA(), x = sheet(cv, k), rnd = seeded(41);
+    // the baked figure, scaled to 90 % and lifted so the data table fits under the feet
+    const g = 0.9, FXd = 1100, FYd = H - 400, src = (px, py) => at(1080 + (px - FXd) / g, (H - 150) + (py - FYd) / g);
+    const s = 11; x.fillStyle = C.ink;
+    const fillRun = r => {
+      x.beginPath(); r.forEach(([px, yc, h], i) => i ? x.lineTo(px, yc - h) : x.moveTo(px, yc - h));
+      for (let i = r.length - 1; i >= 0; i--) x.lineTo(r[i][0], r[i][1] + r[i][2]); x.closePath(); x.fill();
+    };
+    for (let y = 260; y < H - 380; y += s) {
+      let run = null;
+      for (let px = 440; px <= W - 150; px += 3) {
+        const [L, A] = src(px, y), h = A > 0.5 ? s * 0.46 * (0.14 + 0.86 * Math.pow(1 - L, 0.85)) : 0;
+        if (h > 0.3) (run = run || []).push([px, y + (L - 0.5) * s * 0.7, h]);
+        else if (run) { fillRun(run); run = null; }
+      }
+      if (run) fillRun(run);
+    }
+    // height scale on the right, from the floor to the top of the head
+    const sx = W - 70, foot = FYd, cm = S0 => foot - S0 * 11.4 * g;
+    x.strokeStyle = C.ink; x.lineWidth = 2.5; x.beginPath(); x.moveTo(sx, foot); x.lineTo(sx, cm(185)); x.stroke();
+    x.font = `600 20px ${fu}`; x.textAlign = 'right'; x.fillStyle = C.ink;
+    for (let c = 0; c <= 180; c += 10) { const y = cm(c), big = c % 50 === 0; x.beginPath(); x.moveTo(sx, y); x.lineTo(sx - (big ? 34 : 16), y); x.stroke(); if (big) x.fillText(String(c), sx - 44, y + 7); }
+    const hy = cm(180.2); x.fillStyle = C.acc; x.beginPath(); x.moveTo(sx + 4, hy); x.lineTo(sx + 30, hy - 15); x.lineTo(sx + 30, hy + 15); x.closePath(); x.fill();
+    x.fillRect(1180, hy - 1.5, sx - 1180, 3); x.textAlign = 'right'; x.font = `600 40px ${fu}`; x.fillText('180.2', sx - 40, hy - 18); const hw = x.measureText('180.2').width;
+    x.font = `700 26px ${fz}`; x.fillText('身長 cm', sx - 56 - hw, hy - 20);
+    // vertical headline on the left, read right to left
+    vertical(x, '測るほど、', 330, 230, 200, C.ink); vertical(x, '強くなる。', 115, 330, 200, C.acc);
+    x.textAlign = 'left'; x.fillStyle = C.ink; x.font = `600 22px ${fu}`; x.fillText('FFS 2126', 440, 120);
+    x.font = `500 24px ${fz}`; x.fillText('未来フィットネス · 全身スキャン 3D 計測', 440, 156);
+    // data table under the feet
+    const ty = H - 330, cols = [['深部体温', '37.2', '℃'], ['心拍数', '112', 'BPM'], ['呼吸数', '18', '回/分'], ['血中酸素', '98', '%'], ['血中乳酸', '2.4', 'mmol/L'], ['筋酸素', '64', '%']];
+    const cw = (W - 160) / cols.length;
+    x.fillStyle = C.ink; x.fillRect(80, ty, W - 160, 4);
+    cols.forEach(([n, v, u], i) => {
+      const cx0 = 80 + i * cw; if (i) x.fillRect(cx0, ty + 30, 2, 170);
+      x.textAlign = 'left'; x.font = `700 28px ${fz}`; x.fillText(n, cx0 + (i ? 28 : 0), ty + 70);
+      x.font = `600 76px ${fu}`; x.fillText(v, cx0 + (i ? 28 : 0), ty + 160); const w = x.measureText(v).width;
+      x.font = `500 24px ${fz}`; x.fillText(u, cx0 + (i ? 28 : 0) + w + 10, ty + 160);
+    });
+    x.font = `500 18px ${fu}`; x.textAlign = 'right';
+    x.fillText('SIMULATED DATA · 3D MODEL: “MALE BODY” BY ALEXANDER ANTIPOV, CC BY 4.0', W - 80, H - 60);
+    grain(x, 12, rnd);
+  }
+
+  // ---------- posed figures (figures.js, baked from male_body.glb by bake-figures.html) ----------
+  const FIGD = {};
+  async function figure(name) {
+    if (FIGD[name]) return FIGD[name];
+    const F = window.FIGS && window.FIGS[name]; if (!F) throw new Error('figures.js がありません');
+    const im = new Image(); im.src = F.img; await im.decode();
+    const c = document.createElement('canvas'); c.width = F.w; c.height = F.h; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0);
+    return (FIGD[name] = Object.assign({}, F, { im, d: g.getImageData(0, 0, F.w, F.h).data }));
+  }
+  // a figure placed with its image's top-left at (ox, oy), s layout units per image pixel
+  function placed(f, ox, oy, s) {
+    const { w, h, d } = f;
+    const at = (px, py) => {                         // bilinear [light, body] at a layout point
+      const fx = (px - ox) / s - 0.5, fy = (py - oy) / s - 0.5;
+      if (fx < 0 || fy < 0 || fx >= w - 1 || fy >= h - 1) return [0, 0];
+      const ix = fx | 0, iy = fy | 0, ax = fx - ix, ay = fy - iy; let L = 0, A = 0;
+      for (const [dx, dy, wt] of [[0, 0, (1 - ax) * (1 - ay)], [1, 0, ax * (1 - ay)], [0, 1, (1 - ax) * ay], [1, 1, ax * ay]]) {
+        const i = ((iy + dy) * w + ix + dx) * 4, a = d[i + 3] / 255; L += d[i] / 255 * a * wt; A += a * wt;
+      }
+      return [A > 0 ? L / A : 0, A];
+    };
+    return { at, P: k => [ox + f.j[k][0] * s, oy + f.j[k][1] * s], x0: ox, y0: oy, x1: ox + w * s, y1: oy + h * s, s };
+  }
+  const credit = (x, col) => { x.fillStyle = col; x.textAlign = 'right'; x.font = `500 17px ${fu}`; x.fillText('3D MODEL: “MALE BODY” BY ALEXANDER ANTIPOV, CC BY 4.0 · SIMULATED DATA', W - 80, H - 46); };
+
+  // ---------- E · topography (navy + lime) ----------
+  // The figure's surface light becomes the "height" of a map; contour lines are traced with marching squares.
+  async function posterE(cv, k) {
+    const x = sheet(cv, k), rnd = seeded(97), NAVY = '#0D1B2A', LIME = '#C8F560', BLUE = '#5FA8D3', CORAL = '#FF6B57';
+    x.fillStyle = NAVY; x.fillRect(-BL, -BL, LW, LH);
+    // map grid with coordinates
+    x.strokeStyle = 'rgba(95,168,211,.16)'; x.lineWidth = 1.5;
+    for (let gx = 150; gx < W; gx += 150) { x.beginPath(); x.moveTo(gx, -BL); x.lineTo(gx, H + BL); x.stroke(); }
+    for (let gy = 150; gy < H; gy += 150) { x.beginPath(); x.moveTo(-BL, gy); x.lineTo(W + BL, gy); x.stroke(); }
+    x.fillStyle = 'rgba(95,168,211,.6)'; x.font = `500 16px ${fu}`; x.textAlign = 'left';
+    for (let gx = 150, n = 1; gx < W; gx += 150, n++) x.fillText(String(n).padStart(2, '0'), gx + 6, 40);
+    for (let gy = 150, n = 0; gy < H; gy += 150, n++) x.fillText('ABCDEFGHIJKLMNOPQ'[n], 30, gy - 8);
+    const f = await figure('stand'), s = 2.62, fp = placed(f, 900 - f.j.pelBot[0] * s, 300, s);
+    // height field on a 5-unit grid, smoothed once
+    const g = 5, gx0 = fp.x0, gy0 = fp.y0, nx = Math.ceil((fp.x1 - gx0) / g) + 1, ny = Math.ceil((fp.y1 - gy0) / g) + 1;
+    let F = new Float32Array(nx * ny);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const [L, A] = fp.at(gx0 + i * g, gy0 + j * g); F[j * nx + i] = A * (0.1 + 0.9 * L); }
+    for (let it = 0; it < 4; it++) {                   // smooth away the mesh's facets so the contours flow
+      const S2 = new Float32Array(nx * ny);
+      for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) { let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += F[(j + b) * nx + i + a]; S2[j * nx + i] = t / 9; }
+      F = S2;
+    }
+    const contour = (lv) => {
+      x.beginPath();
+      for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+        const v = [F[j * nx + i], F[j * nx + i + 1], F[(j + 1) * nx + i + 1], F[(j + 1) * nx + i]], c = [[0, 0], [1, 0], [1, 1], [0, 1]], pts = [];
+        for (let e = 0; e < 4; e++) {
+          const a = v[e] - lv, b = v[(e + 1) % 4] - lv;
+          if ((a < 0) !== (b < 0)) { const t = a / (a - b), p0 = c[e], p1 = c[(e + 1) % 4]; pts.push([gx0 + (i + p0[0] + (p1[0] - p0[0]) * t) * g, gy0 + (j + p0[1] + (p1[1] - p0[1]) * t) * g]); }
+        }
+        for (let q = 0; q + 1 < pts.length; q += 2) { x.moveTo(pts[q][0], pts[q][1]); x.lineTo(pts[q + 1][0], pts[q + 1][1]); }
+      }
+      x.stroke();
+    };
+    x.lineCap = 'round'; x.strokeStyle = LIME;
+    for (let n = 0, lv = 0.2; lv < 0.97; n++, lv += 0.065) { x.lineWidth = n % 3 === 2 ? 2.6 : 1.4; x.globalAlpha = 0.55 + 0.45 * (lv - 0.2) / 0.77; contour(lv); }
+    x.globalAlpha = 1; x.lineWidth = 4; contour(0.05);                // the coastline: the body's outline
+    // survey markers on the body
+    const mark = (key, n, v, side, col) => {
+      const [px, py] = fp.P(key), ex = side < 0 ? 300 : W - 300;
+      x.strokeStyle = col; x.fillStyle = col; x.lineWidth = 2; x.setLineDash([6, 6]); x.beginPath(); x.moveTo(px, py); x.lineTo(ex, py); x.stroke(); x.setLineDash([]);
+      x.beginPath(); x.moveTo(px, py - 14); x.lineTo(px + 12, py + 8); x.lineTo(px - 12, py + 8); x.closePath(); x.fill();
+      x.textAlign = side < 0 ? 'right' : 'left'; const tx = side < 0 ? ex - 14 : ex + 14;
+      x.font = `700 26px ${fz}`; x.fillText(n, tx, py - 12); x.font = `600 44px ${fu}`; x.fillText(v, tx, py + 36);
+    };
+    mark('head', '深部体温', '36.8℃', 1, LIME); mark('heart', '心拍数', '64', -1, CORAL);
+    mark('thighL', '大腿四頭筋', '41%', 1, LIME); mark('handR', '握力', '52kg', -1, LIME);
+    // title, year, legend, north arrow and scale bar
+    x.fillStyle = LIME; x.textAlign = 'left'; x.font = `900 170px ${fz}`; x.fillText('からだの', 70, 290); x.fillText('地形図', 70, 470);
+    x.textAlign = 'right'; x.font = `800 210px ${fu}`; x.lineWidth = 3; x.strokeStyle = LIME; x.strokeText('2126', W - 70, 300);
+    x.fillStyle = BLUE; x.font = `600 22px ${fu}`; x.fillText('BODY TOPOGRAPHY · 100 YEARS LATER', W - 74, 350);
+    const ly = H - 330; x.fillStyle = LIME; x.textAlign = 'left'; x.font = `700 46px ${fz}`; x.fillText('2126年、からだは地図になる。', 80, ly + 40);
+    x.fillStyle = BLUE; x.font = `500 24px ${fz}`; x.fillText('等高線＝体表の熱量（概念シミュレーション）', 80, ly + 90);
+    for (let i = 0; i < 5; i++) { x.strokeStyle = LIME; x.globalAlpha = 0.5 + i * 0.12; x.lineWidth = i === 4 ? 3 : 1.5; x.beginPath(); x.moveTo(80 + i * 60, ly + 140); x.lineTo(120 + i * 60, ly + 140); x.stroke(); }
+    x.globalAlpha = 1; x.fillStyle = BLUE; x.font = `500 18px ${fu}`; x.fillText('LOW', 80, ly + 174); x.textAlign = 'right'; x.fillText('HIGH', 360, ly + 174);
+    const nx0 = W - 150, ny0 = ly + 40; x.fillStyle = LIME; x.beginPath(); x.moveTo(nx0, ny0 - 50); x.lineTo(nx0 + 22, ny0 + 20); x.lineTo(nx0, ny0 + 6); x.lineTo(nx0 - 22, ny0 + 20); x.closePath(); x.fill();
+    x.textAlign = 'center'; x.font = `600 24px ${fu}`; x.fillText('N', nx0, ny0 + 56);
+    const sb = 50 * f.ppc * s;                        // 50 cm on the figure
+    x.fillRect(W - 80 - sb, ly + 150, sb, 6); x.textAlign = 'right'; x.font = `500 18px ${fu}`; x.fillText('50 cm', W - 80, ly + 136);
+    credit(x, 'rgba(95,168,211,.8)');
+    grain(x, 8, rnd);
+  }
+
+  // ---------- F · risograph (fluorescent pink + blue) ----------
+  // Two ink layers printed separately, slightly out of register, overprinted with multiply: overlaps turn violet.
+  async function posterF(cv, k) {
+    const x = sheet(cv, k), rnd = seeded(101), PINK = '#FF48B0', BLUE = '#0078BF';
+    x.fillStyle = '#F3EEE4'; x.fillRect(-BL, -BL, LW, LH);
+    const layer = () => { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const g = c.getContext('2d'); g.setTransform(x.getTransform()); return [c, g]; };
+    const f = await figure('squat'), s = 3.0, fp = placed(f, 120, 560, s);
+    // pink layer: the giant 100, data stamps, and a second, coarser screen of the figure
+    const [pc, p] = layer(); p.fillStyle = PINK;
+    const s100 = fitText(p, '100', `800 #px ${fu}`, W - 120, 900); p.font = `800 ${s100}px ${fu}`; p.textAlign = 'left'; p.fillText('100', 50, 120 + s100 * 0.74);
+    const dots = (g, sp, ang, k0, dx, dy) => {
+      const c = Math.cos(ang), si = Math.sin(ang), N = Math.ceil(2400 / sp);
+      for (let a = -N; a <= N; a++) for (let b = -N; b <= N; b++) {
+        const px = 900 + (a * c - b * si) * sp, py = 1300 + (a * si + b * c) * sp; if (px < fp.x0 || px > fp.x1 || py < fp.y0 || py > fp.y1) continue;
+        const [L, A] = fp.at(px, py); if (A < 0.5) continue; const r = sp * k0 * Math.sqrt(0.12 + 0.88 * (1 - L));
+        g.beginPath(); g.arc(px + dx, py + dy, r, 0, 7); g.fill();
+      }
+    };
+    dots(p, 30, 0.26, 0.5, 16, 10);
+    p.font = `700 30px ${fz}`; p.textAlign = 'left';
+    [['膝角度', '92°'], ['大腿四頭筋', '86%'], ['関節負荷', '2.8×']].forEach(([n, v], i) => {
+      const yy = 1260 + i * 150; p.beginPath(); p.arc(1290, yy - 10, 16, 0, 7); p.fill(); p.font = `700 30px ${fz}`; p.fillText(n, 1330, yy); p.font = `600 64px ${fu}`; p.fillText(v, 1330, yy + 66);
+    });
+    // blue layer: the figure as a fine screen, the headline
+    const [bc, b] = layer(); b.fillStyle = BLUE;
+    dots(b, 15, 1.31, 0.62, 0, 0);
+    b.textAlign = 'left'; b.font = `900 150px ${fz}`; b.fillText('年後も、', 70, H - 400);
+    const sh = fitText(b, 'しゃがむ。', `900 #px ${fz}`, W - 120, 340); b.font = `900 ${sh}px ${fz}`; b.fillText('しゃがむ。', 60, H - 90);
+    b.font = `600 22px ${fu}`; b.textAlign = 'right'; b.fillText('FUTURE FITNESS 2126 · RISO EDITION', W - 80, 100);
+    // riso texture: ink drop-outs in each layer
+    for (const g of [p, b]) { g.save(); g.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 9000; i++) { g.globalAlpha = 0.25 + rnd() * 0.5; g.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 3, 1 + rnd() * 3); } g.restore(); }
+    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'multiply'; x.globalAlpha = 0.92;
+    x.drawImage(pc, Math.round(5 * cv.width / LW), Math.round(3 * cv.width / LW)); x.drawImage(bc, 0, 0); x.restore();   // pink slightly off register
+    credit(x, BLUE);
+    grain(x, 12, rnd);
+  }
+
+  const DRAW = { A: posterA, B: posterB, C: posterC, D: posterD, E: posterE, F: posterF }, msg = document.getElementById('msg');
+  const save = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  // JPEG from the canvas carries no resolution; write 300 dpi into its JFIF header so it opens at A1 size
+  async function jpeg300(cv) {
+    const b = new Uint8Array(await (await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.95))).arrayBuffer());
+    if (b[6] === 0x4A && b[7] === 0x46 && b[8] === 0x49 && b[9] === 0x46) { b[13] = 1; b[14] = 1; b[15] = 44; b[16] = 1; b[17] = 44; }
+    return new Blob([b], { type: 'image/jpeg' });
+  }
+  try { for (const id of 'BCADEF') await DRAW[id](document.getElementById('p' + id), 1); }
+  catch (e) { msg.textContent = '生成エラー：' + e.message; console.error(e); }
+  document.querySelectorAll('[data-prev]').forEach(b => {
+    b.disabled = false;
+    b.onclick = () => document.getElementById('p' + b.dataset.prev).toBlob(bl => save(bl, `future-fitness-2126-${b.dataset.prev}-preview.png`));
+  });
+  document.querySelectorAll('[data-print]').forEach(b => {
+    b.disabled = false;
+    b.onclick = async () => {
+      const id = b.dataset.print, all = document.querySelectorAll('[data-print]');
+      all.forEach(z => z.disabled = true); msg.textContent = `${id} を A1 · 300 dpi（${PRINT_W} × ${PRINT_H} px）で書き出し中…`;
+      await new Promise(r => setTimeout(r, 30));
+      try {
+        const cv = document.createElement('canvas'); await DRAW[id](cv, 'print');
+        save(await jpeg300(cv), `future-fitness-2126-${id}-A1-300dpi-bleed3mm.jpg`);
+        cv.width = cv.height = 1;
+        msg.textContent = `${id} を書き出しました（${PRINT_W} × ${PRINT_H} px、300 dpi、塗り足し 3 mm 込み）。`;
+      } catch (e) { msg.textContent = '書き出しエラー：' + e.message; console.error(e); }
+      all.forEach(z => z.disabled = false);
+    };
+  });
+})();
+</script>
+</body>
+</html>

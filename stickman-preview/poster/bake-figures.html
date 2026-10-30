@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>bake figures</title>
+</head>
+<body>
+<!-- Poses male_body.glb (a static A-pose mesh) with a small linear-blend skin, renders each pose with simple light and
+     prints the shading images + joint anchors as JSON into #out. bake-figure-a.ps1 -Page bake-figures.html -Var FIGS
+     saves it as figures.js. Images: grey = light, alpha = body; PPC pixels per cm; anchors in image pixels. -->
+<pre id="out"></pre>
+<script src="../three.min.js"></script>
+<script>
+(async () => {
+  const PPC = 4;
+  const buf = await (await fetch('../male_body.glb')).arrayBuffer(), dv = new DataView(buf);
+  const jl = dv.getUint32(12, true), json = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jl))), bin = 20 + jl + 8;
+  const prim = json.meshes[0].primitives[0];
+  const read = (ai, T, n) => { const a = json.accessors[ai], bv = json.bufferViews[a.bufferView], o = bin + (bv.byteOffset || 0) + (a.byteOffset || 0); return new T(buf.slice(o, o + a.count * n * T.BYTES_PER_ELEMENT)); };
+  const P0 = read(prim.attributes.POSITION, Float32Array, 3), N0 = read(prim.attributes.NORMAL, Float32Array, 3), ia = json.accessors[prim.indices];
+  const idx = read(prim.indices, ia.componentType === 5125 ? Uint32Array : Uint16Array, 1), N = P0.length / 3;
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  // joints measured on the mesh (cm), same table as the app (MJ)
+  const J = { pelBot: V(0, 90.4, 0), chest: V(0, 146.6, -1), head: V(0, 168, 2) };
+  for (const [k, p] of Object.entries({ sh: [17, 143, -3], el: [34, 117, -5], hand: [50, 86, 13], hip: [9.5, 88, 0], kn: [13, 50, -2], an: [16, 9, -5], toe: [22, 1, 13] })) {
+    J[k + 'L'] = V(...p); J[k + 'R'] = V(-p[0], p[1], p[2]);
+  }
+  const B = [['trunk', 'pelBot', 'chest', null], ['neck', 'chest', 'head', 'trunk']];
+  for (const s of 'LR') B.push(['ua' + s, 'sh' + s, 'el' + s, 'trunk'], ['fa' + s, 'el' + s, 'hand' + s, 'ua' + s],
+    ['th' + s, 'hip' + s, 'kn' + s, 'trunk'], ['sn' + s, 'kn' + s, 'an' + s, 'th' + s], ['ft' + s, 'an' + s, 'toe' + s, 'sn' + s]);
+  const bi = Object.fromEntries(B.map((b, i) => [b[0], i]));
+  // weights: nearest bone, blended with the second nearest when it is the parent or a child (smoothly across the joint)
+  const segD = (p, a, b) => { const ab = b.clone().sub(a), t = Math.max(0, Math.min(1, p.clone().sub(a).dot(ab) / ab.lengthSq())); return p.distanceTo(a.clone().addScaledVector(ab, t)); };
+  const b1 = new Uint8Array(N), b2 = new Uint8Array(N), w2 = new Float32Array(N), p = V(0, 0, 0);
+  for (let i = 0; i < N; i++) {
+    p.set(P0[i * 3], P0[i * 3 + 1], P0[i * 3 + 2]);
+    // the side of the chest lies right next to the hanging upper arm: points inside the arm's inner edge count as farther
+    // from it (so they stay with the trunk) but can still blend across the shoulder
+    const armEdge = 17 + (143 - p.y) * 0.65 - 5.5;
+    const d = B.map(b => segD(p, J[b[1]], J[b[2]]) + ((b[0].startsWith('ua') && (b[0] === 'uaL' ? p.x : -p.x) < armEdge) ? 6.5 : 0));
+    let i1 = 0; d.forEach((v, k) => { if (v < d[i1]) i1 = k; });
+    let i2 = -1; d.forEach((v, k) => { if (k !== i1 && (B[k][3] === B[i1][0] || B[i1][3] === B[k][0]) && (i2 < 0 || v < d[i2])) i2 = k; });
+    b1[i] = i1; b2[i] = i2 < 0 ? i1 : i2; w2[i] = i2 < 0 ? 0 : Math.max(0, 0.5 * (1 - (d[i2] - d[i1]) / 5));
+  }
+  const dir = (x, y, z) => V(x, y, z).normalize();
+  // poses: target world direction per bone (model faces +Z, +X is the figure's left); bones not listed follow their parent
+  const POSES = {
+    stand: { view: -0.42, bones: {} },
+    squat: { view: Math.PI / 2, bones: { trunk: dir(0, 0.8, 0.6), neck: dir(0, 0.9, 0.42), uaL: dir(0.08, -0.05, 1), uaR: dir(-0.08, -0.05, 1), faL: dir(0, 0.02, 1), faR: dir(0, 0.02, 1),
+      thL: dir(0.18, -0.12, 1), thR: dir(-0.18, -0.12, 1), snL: dir(0.05, -0.96, -0.3), snR: dir(-0.05, -0.96, -0.3), ftL: dir(0.25, -0.35, 0.9), ftR: dir(-0.25, -0.35, 0.9) } },
+    sprint: { view: Math.PI / 2, bones: { trunk: dir(0, 0.95, 0.3), neck: dir(0, 0.95, 0.3),
+      uaR: dir(-0.05, -0.55, 0.83), faR: dir(0, 0.85, 0.52), uaL: dir(0.05, -0.75, -0.66), faL: dir(0, 0.45, -0.9),
+      thL: dir(0.05, -0.35, 0.94), snL: dir(0, -0.93, -0.36), ftL: dir(0, -0.3, 0.95),
+      thR: dir(-0.05, -0.86, -0.5), snR: dir(0, -0.35, -0.94), ftR: dir(0, -0.85, -0.5) } },
+    star: { view: -0.15, bones: { uaL: dir(0.62, 0.78, 0.05), faL: dir(0.5, 0.86, 0.05), uaR: dir(-0.62, 0.78, 0.05), faR: dir(-0.5, 0.86, 0.05),
+      thL: dir(0.38, -0.92, 0.05), snL: dir(0.3, -0.95, 0), thR: dir(-0.38, -0.92, 0.05), snR: dir(-0.3, -0.95, 0) } },
+    lunge: { view: Math.PI / 2, bones: { trunk: dir(0, 1, 0.06), neck: dir(0, 1, 0.1), uaL: dir(0.05, -0.2, 0.98), faL: dir(0, 0.95, 0.3), uaR: dir(-0.05, -0.92, -0.38), faR: dir(0, -0.6, 0.8),
+      thL: dir(0.06, -0.05, 1), snL: dir(0.02, -1, 0), ftL: dir(0.2, -0.3, 0.93), thR: dir(-0.06, -0.72, -0.69), snR: dir(0, -0.12, -0.99), ftR: dir(0, -0.75, 0.66) } }
+  };
+  const out = {}, pos = new Float32Array(N * 3), nrm = new Float32Array(N * 3), nv = V(0, 0, 0);
+  for (const [name, pose] of Object.entries(POSES)) {
+    const q = [], st = [];
+    B.forEach(([n, a, b, par], k) => {
+      const rest = J[b].clone().sub(J[a]).normalize(), pk = par ? bi[par] : -1;
+      q[k] = pose.bones[n] ? new THREE.Quaternion().setFromUnitVectors(rest, pose.bones[n]) : (pk >= 0 ? q[pk].clone() : new THREE.Quaternion());
+      st[k] = pk < 0 ? J[a].clone() : st[pk].clone().add(J[a].clone().sub(J[B[pk][1]]).applyQuaternion(q[pk]));
+    });
+    const T = (k, v) => st[k].clone().add(v.clone().sub(J[B[k][1]]).applyQuaternion(q[k]));
+    const rot = new THREE.Matrix4().makeRotationY(pose.view);
+    for (let i = 0; i < N; i++) {
+      p.set(P0[i * 3], P0[i * 3 + 1], P0[i * 3 + 2]);
+      const r = T(b1[i], p).lerp(T(b2[i], p), w2[i]).applyMatrix4(rot); pos[i * 3] = r.x; pos[i * 3 + 1] = r.y; pos[i * 3 + 2] = r.z;
+      nv.set(N0[i * 3], N0[i * 3 + 1], N0[i * 3 + 2]);       // the model's own (smooth) normals, turned the same way
+      const n = nv.clone().applyQuaternion(q[b1[i]]).lerp(nv.clone().applyQuaternion(q[b2[i]]), w2[i]).normalize().applyMatrix4(rot);
+      nrm[i * 3] = n.x; nrm[i * 3 + 1] = n.y; nrm[i * 3 + 2] = n.z;
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos.slice(), 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nrm.slice(), 3));
+    geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.computeBoundingBox();
+    const bb = geo.boundingBox, m = 3, x0 = bb.min.x - m, x1 = bb.max.x + m, y0 = bb.min.y - m, y1 = bb.max.y + m;
+    const w = Math.ceil((x1 - x0) * PPC), h = Math.ceil((y1 - y0) * PPC);
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(w, h); r.setClearColor(0, 0);
+    const scene = new THREE.Scene(); scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0xffffff })));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.05); dl.position.set(-1.3, 1.1, 1.4); scene.add(dl, new THREE.AmbientLight(0xffffff, 0.12));
+    const cam = new THREE.OrthographicCamera(x0, x0 + w / PPC, y0 + h / PPC, y0, -500, 500); cam.position.set(0, 0, 300);
+    r.render(scene, cam);
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(r.domElement, 0, 0); r.dispose();
+    // anchors: joints of the posed skeleton, in image pixels
+    const A = {}, put = (k, v) => { const t = v.clone().applyMatrix4(rot); A[k] = [Math.round((t.x - x0) * PPC), Math.round((y1 - t.y) * PPC)]; };
+    B.forEach(([n, a, b], k) => { put(a, st[k]); put(b, T(k, J[b])); });
+    put('heart', T(0, V(5, 133, 11))); put('belly', T(0, V(0, 104, 12)));
+    put('thighL', T(bi.thL, V(12, 70, 9))); put('thighR', T(bi.thR, V(-12, 70, 9)));
+    out[name] = { w, h, ppc: PPC, j: A, img: c.toDataURL('image/png') };
+  }
+  document.getElementById('out').textContent = JSON.stringify(out);
+})().catch(e => { document.getElementById('out').textContent = 'ERROR ' + e.message; });
+</script>
+</body>
+</html>
