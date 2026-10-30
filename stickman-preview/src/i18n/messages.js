@@ -102,5 +102,9 @@ export const I18N = {
 };
 
 export const LANGS = ['zh', 'ja', 'en'];
-/** translate a Chinese source string into `lang`, filling {0}, {1}… in order */
-export const translate = (lang, s, ...a) => { const e = I18N[s]; let r = lang !== 'zh' && e ? e[lang === 'ja' ? 0 : 1] : s; a.forEach((v, i) => { r = r.split('{' + i + '}').join(v); }); return r; };
+/** the table as vue-i18n messages: one flat object per language, keyed by the Chinese source (zh maps each key to itself) */
+export const messages = {
+  zh: Object.fromEntries(Object.keys(I18N).map(k => [k, k])),
+  ja: Object.fromEntries(Object.entries(I18N).map(([k, v]) => [k, v[0]])),
+  en: Object.fromEntries(Object.entries(I18N).map(([k, v]) => [k, v[1]]))
+};
