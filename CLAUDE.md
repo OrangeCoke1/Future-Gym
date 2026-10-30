@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Editing rules (mandatory, highest priority):** @EDITING_RULES.md — respond in Simplified Chinese; for any code change, plan first into `.prompt.md` and wait for `execute` before editing; append every change to `.dev_log`.
+**Global rules (mandatory, highest priority):** @GLOBAL_RULES.md — respond in Simplified Chinese; for any code change, plan first into `.prompt.md` and wait for `execute` before editing; append every change to `.dev_log`.
 
 ## What this is
 

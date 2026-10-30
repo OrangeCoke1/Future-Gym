@@ -1,4 +1,4 @@
-# Editing Rules
+# Global Rules
 
 本文件是本仓库的编辑规则，由 `CLAUDE.md` 引用，每次会话自动加载。
 

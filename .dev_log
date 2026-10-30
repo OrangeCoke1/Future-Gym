@@ -49,3 +49,11 @@
 ## [2026-10-30 17:38] 简化根目录 README
 - **Goal**: 面向其他开发者（可能没有 Vue 基础）精简 README
 - **Changes**: `README.md`：只保留运行方法、「想改什么去哪里」对照表、Vue 文件的三段结构和「引擎计算、界面只显示」的说明、署名
+
+## [2026-10-30 18:06] .gitignore 移到根目录
+- **Goal**: .prompt.md、.dev_log、.gitignore 统一放在仓库根目录
+- **Changes**: `stickman-preview/.gitignore` 的规则（node_modules/、dist/）写入根目录 `.gitignore`，删除 `stickman-preview/.gitignore`；.prompt.md 与 .dev_log 本来就在根目录
+
+## [2026-10-30 18:07] 规则文件改名
+- **Goal**: 规则文件改为英文名「全局规则」
+- **Changes**: `EDITING_RULES.md` → `GLOBAL_RULES.md`（git mv，仍在根目录）；`CLAUDE.md` 的引用改为 `@GLOBAL_RULES.md`，`.prompt.md` 中的引用同步更新（上面的历史记录保持原文）
