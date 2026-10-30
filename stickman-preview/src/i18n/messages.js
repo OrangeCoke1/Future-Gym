@@ -1,0 +1,106 @@
+// UI strings: 中文 (source) · 日本語 · English.
+// Keyed by the Chinese source text, so the markup stays readable and script strings stay what they were:
+// t('深蹲') → '深蹲' / 'スクワット' / 'Squat'. Placeholders {0}, {1} are filled in order. Missing entries fall back to Chinese.
+/** @type {Record<string, [string, string]>} */
+export const I18N = {
+  '未来健身 2126 · 动作识别原型': ['未来のフィットネス 2126 · 動作認識プロトタイプ', 'Future Fitness 2126 · Motion prototype'],
+  '未来健身 2126': ['未来のフィットネス 2126', 'Future Fitness 2126'],
+  '演示': ['デモ', 'Demo'], '摄像头': ['カメラ', 'Camera'], '镜像': ['ミラー', 'Mirror'], '面板': ['パネル', 'Panel'], '关闭': ['閉じる', 'Close'],
+  '本机时间': ['この端末の時刻', 'Local time'], '数据来源': ['データソース', 'Data source'],
+  // actions, rules and rep states
+  '待机': ['待機', 'Idle'], '走路': ['ウォーキング', 'Walk'], '转身': ['ターン', 'Turn'], '挥手': ['手を振る', 'Wave'],
+  '深蹲': ['スクワット', 'Squat'], '弓步': ['ランジ', 'Lunge'], '慢跑': ['ジョギング', 'Jog'], '高抬腿': ['もも上げ', 'High knees'],
+  '开合跳': ['ジャンピングジャック', 'Jumping jacks'], '弯举': ['アームカール', 'Curl'], '推举': ['ショルダープレス', 'Press'], '侧平举': ['サイドレイズ', 'Lateral raise'],
+  '不计数，用于站立和动作之间的过渡': ['カウントなし。立位と動作の間のつなぎ', 'No counting; a pause between moves'],
+  '左右脚交替着地一次 = 1 步': ['左右の足が交互に 1 回接地 = 1 歩', 'Each alternate foot strike = 1 step'],
+  '用左右肩（11、12）连线算出身体朝向，小人跟着转': ['左右の肩（11、12）を結ぶ線から体の向きを計算し、フィギュアが回転', 'Body facing from the shoulder line (11, 12); the figure turns with it'],
+  '手腕高于肩并左右摆动一次 = 1 次': ['手首を肩より上げて左右に 1 往復 = 1 回', 'Wrist above shoulder, one side-to-side swing = 1'],
+  '膝角 < 100° → > 160° 计 1 次': ['膝角 < 100° → > 160° で 1 回', 'Knee < 100° → > 160° = 1 rep'],
+  '前腿膝角接近 90° 再站起 = 1 次（左右交替）': ['前脚の膝角が約 90° になってから立つ = 1 回（左右交互）', 'Front knee near 90°, then stand = 1 rep (alternating)'],
+  '任一侧膝角 < 110° → 双膝 > 155° 计 1 次': ['どちらかの膝角 < 110° → 両膝 > 155° で 1 回', 'Either knee < 110° → both > 155° = 1 rep'],
+  '膝盖抬到髋部高度，左右各一次 = 2 步': ['膝を股関節の高さまで、左右各 1 回 = 2 歩', 'Knee to hip height, once each side = 2 steps'],
+  '双手过头 + 双脚分开，再收回 = 1 次': ['両手を頭上 + 両脚を開き、戻す = 1 回', 'Hands overhead + feet apart, then back = 1 rep'],
+  '肘角 < 50° → > 150° 计 1 次': ['肘角 < 50° → > 150° で 1 回', 'Elbow < 50° → > 150° = 1 rep'],
+  '肘角 < 100° → > 160° 且手腕高于头顶': ['肘角 < 100° → > 160°、手首が頭より上', 'Elbow < 100° → > 160°, wrists above head'],
+  '手臂与躯干夹角 > 75° → < 30° 计 1 次': ['腕と体幹の角度 > 75° → < 30° で 1 回', 'Arm–torso angle > 75° → < 30° = 1 rep'],
+  '站立': ['立位', 'Standing'], '转身中': ['ターン中', 'Turning'], '蹲到位': ['しゃがみ切り', 'Down'], '站直': ['直立', 'Up'],
+  '收紧': ['曲げ切り', 'Curled'], '伸直': ['伸ばす', 'Straight'], '架肩': ['肩で構え', 'Rack'], '推起': ['押し上げ', 'Up'],
+  '举平': ['水平', 'Up'], '放下': ['下ろす', 'Down'], '开合': ['開閉', 'Jack'], '打开': ['開く', 'Open'], '收回': ['戻す', 'In'],
+  '左脚着地': ['左足接地', 'Left foot down'], '右脚着地': ['右足接地', 'Right foot down'], '等待识别': ['認識待ち', 'Waiting'],
+  // stage read-outs
+  '完成次数': ['完了回数', 'Reps'], '步数': ['歩数', 'Steps'], '当前动作': ['現在の動作', 'Current'],
+  '第 {0} 组 · 每组 {1} 次': ['第 {0} セット · 1 セット {1} 回', 'Set {0} · {1} reps per set'],
+  '强度': ['強度', 'Intensity'], '时长': ['時間', 'Time'], '步频 /分': ['ピッチ /分', 'Steps /min'], '节奏 /分': ['テンポ /分', 'Tempo /min'], '节奏 次/分': ['テンポ 回/分', 'Reps /min'],
+  '正面': ['正面', 'Front'], '背面': ['背面', 'Back'], '侧面': ['側面', 'Side'], '朝右': ['右向き', 'Right'], '朝左': ['左向き', 'Left'],
+  '关节角度（3D）': ['関節角度（3D）', 'Joint angle (3D)'], '膝角': ['膝角度', 'Knee angle'], '左 {0}°': ['左 {0}°', 'L {0}°'], '右 {0}°': ['右 {0}°', 'R {0}°'],
+  '发力肌群': ['使用筋群', 'Working muscles'], '当前发力': ['現在の出力', 'Effort now'], '累计疲劳': ['累積疲労', 'Fatigue'],
+  '预计恢复 约 {0} 小时': ['回復まで 約 {0} 時間', 'Recovery ~{0} h'], '已恢复': ['回復済み', 'Recovered'],
+  '股四头肌': ['大腿四頭筋', 'Quads'], '臀大肌': ['大臀筋', 'Glutes'], '小腿': ['ふくらはぎ', 'Calves'], '核心': ['体幹', 'Core'],
+  '三角肌': ['三角筋', 'Deltoids'], '前臂': ['前腕', 'Forearms'], '肱二头肌': ['上腕二頭筋', 'Biceps'], '上背': ['上背部', 'Upper back'], '斜方肌': ['僧帽筋', 'Trapezius'],
+  '小人动画，拖动旋转视角': ['フィギュアのアニメーション。ドラッグで視点を回転', 'Figure animation; drag to rotate the view'],
+  '关节角度刻度：左右两侧的当前角度和计数阈值': ['関節角度スケール：左右の現在角度とカウントのしきい値', 'Joint angle scale: current angle on each side and the counting thresholds'],
+  '摄像头画面': ['カメラ映像', 'Camera view'],
+  '体表热量': ['体表温度', 'Skin heat'], '模型': ['モデル', 'Model'], '人体模型': ['人体モデル', 'Body model'],
+  '正面摊开的人体热成像图，越亮表示越热': ['正面から広げた人体のサーモグラフィ。明るいほど高温', 'Front-view thermal map of the body laid out flat; brighter is hotter'],
+  // left column
+  '重心、水分、出汗和关节负荷': ['重心・水分・発汗・関節負荷', 'Balance, hydration, sweat and joint load'],
+  '重心与平衡': ['重心とバランス', 'Balance'], '骨架计算': ['骨格から計算', 'From skeleton'], '左': ['左', 'L'], '右': ['右', 'R'],
+  '俯视图：双脚位置和身体重心的落点': ['上から見た図：両足の位置と重心の落下点', 'Top view: both feet and where the centre of mass falls'],
+  '水分': ['水分', 'Hydration'], '手动': ['手動', 'Manual'], '余': ['残り', 'Left'], '撤销': ['取消', 'Undo'],
+  '饮水量手动记录，出汗量为模拟': ['飲水量は手動記録、発汗量はシミュレーション', 'Intake is logged by hand; sweat is simulated'],
+  '横放的水瓶，水量表示已记录的饮水量减去出汗量后的余量，满刻度 2000 毫升': ['横向きの水筒。記録した飲水量から発汗量を引いた残量を示す（満タン 2000 ml）', 'Bottle on its side: logged intake minus sweat, full at 2000 ml'],
+  '目标 {0} ml': ['目標 {0} ml', 'Goal {0} ml'], '上次 {0} +{1}': ['前回 {0} +{1}', 'Last {0} +{1}'], '撤销 {0} 的 +{1} ml': ['{0} の +{1} ml を取り消す', 'Undo +{1} ml from {0}'],
+  '出汗': ['発汗', 'Sweat'], '出汗中': ['発汗中', 'Sweating'], 'ml/时': ['ml/時', 'ml/h'], '模拟': ['シミュレーション', 'Simulated'],
+  '关节负荷': ['関節負荷', 'Joint load'], '膝': ['膝', 'Knee'], '髋': ['股関節', 'Hip'], '腰椎': ['腰椎', 'Lower back'],
+  '承受的力相当于体重的几倍': ['体重の何倍の力がかかっているか', 'Force on the joint, as a multiple of body weight'],
+  '侧视的躯干和腿，腰椎、髋、膝三处圆点的大小表示负荷': ['体幹と脚の側面図。腰椎・股関節・膝の点の大きさが負荷を表す', 'Side view of trunk and legs; dot size at lower back, hip and knee shows load'],
+  // right column
+  '身体数据': ['身体データ', 'Body data'], '心率': ['心拍数', 'Heart rate'], '估算': ['推定', 'Estimate'], '实测': ['実測', 'Measured'],
+  '静息': ['安静', 'Rest'], '热身': ['ウォームアップ', 'Warm-up'], '燃脂': ['脂肪燃焼', 'Fat burn'], '有氧': ['有酸素', 'Aerobic'], '无氧': ['無酸素', 'Anaerobic'], '极限': ['最大', 'Max'],
+  '最近 30 秒心率趋势': ['直近 30 秒の心拍数の推移', 'Heart rate, last 30 s'], '能量消耗': ['消費エネルギー', 'Energy'],
+  '最近 60 秒每 2 秒的消耗': ['直近 60 秒、2 秒ごとの消費', 'Energy per 2 s, last 60 s'],
+  '按动作强度（MET）和体重估算': ['運動強度（MET）と体重から推定', 'Estimated from intensity (MET) and weight'],
+  '按实测心率、体重、年龄估算': ['実測心拍数・体重・年齢から推定', 'Estimated from measured HR, weight and age'],
+  '体征': ['バイタル', 'Vitals'], '血氧 %': ['血中酸素 %', 'SpO₂ %'], '呼吸 /分': ['呼吸 /分', 'Breaths /min'], '核心体温 °C': ['深部体温 °C', 'Core temp °C'],
+  '血乳酸 mmol/L': ['血中乳酸 mmol/L', 'Lactate mmol/L'], '肌氧 %': ['筋酸素 %', 'Muscle O₂ %'], '心率变异 ms': ['心拍変動 ms', 'HRV ms'],
+  // bottom row
+  '暂停': ['一時停止', 'Pause'], '播放': ['再生', 'Play'], '速度': ['速度', 'Speed'], '选择动作': ['動作を選択', 'Choose an exercise'],
+  '视角': ['視点', 'View'], '环绕': ['周回', 'Orbit'],
+  // panel
+  '显示': ['表示', 'Display'], '小人': ['フィギュア', 'Figure'], '小人的显示方式': ['フィギュアの表示方法', 'Figure style'],
+  '粒子全息': ['粒子ホログラム', 'Particle hologram'], '实体': ['ソリッド', 'Solid'], '摩尔纹': ['モアレ', 'Moiré'], '光影': ['陰影', 'Shading'], '轮廓': ['輪郭', 'Outline'],
+  '肌群': ['筋群', 'Muscles'], '血氧': ['血中酸素', 'Blood O₂'], '角度': ['角度', 'Angle'], '关键点': ['キーポイント', 'Keypoints'],
+  '重置布局': ['レイアウトをリセット', 'Reset layout'], '拖动卡片之间的空隙可以调整大小': ['カードの間をドラッグしてサイズを変更できます', 'Drag the gaps between cards to resize them'],
+  '拖动调整两侧卡片的大小': ['ドラッグして両側のカードのサイズを変更', 'Drag to resize the cards on either side'],
+  '小人颜色': ['フィギュアの色', 'Figure colour'], '墨色': ['墨色', 'Ink'], '橙': ['オレンジ', 'Orange'], '橄榄绿': ['オリーブ', 'Olive'], '灰蓝': ['グレーブルー', 'Grey blue'], '白': ['白', 'White'],
+  '个人资料': ['プロフィール', 'Profile'], '体重': ['体重', 'Weight'], '年龄': ['年齢', 'Age'], '岁': ['歳', 'yrs'], '性别': ['性別', 'Sex'], '男': ['男性', 'M'], '女': ['女性', 'F'],
+  '用于估算的个人资料': ['推定に使うプロフィール', 'Profile used for estimates'], '只用于估算能量消耗。': ['消費エネルギーの推定にのみ使います。', 'Used only to estimate energy.'],
+  '本次训练': ['今回のトレーニング', 'This session'], '清空': ['クリア', 'Clear'], '次': ['回', 'reps'], '步': ['歩', 'steps'],
+  '切换动作时，上一个动作完成的次数会记在这里。': ['動作を切り替えると、前の動作の回数がここに記録されます。', "When you switch exercises, the previous one's count is logged here."],
+  '数据说明': ['データについて', 'About the data'], '手动记录': ['手動記録', 'Logged by hand'],
+  '按动作强度（MET）或心率公式（Keytel 等，2005）推算，不是测量值。': ['運動強度（MET）または心拍数の式（Keytel ら, 2005）から推定。測定値ではありません。', 'Derived from intensity (MET) or a heart-rate formula (Keytel et al., 2005); not a measurement.'],
+  '来自已连接的心率设备；超过 5 秒没有新读数就退回估算。': ['接続した心拍計からの値。5 秒以上更新がなければ推定に戻ります。', 'From a connected heart-rate device; falls back to the estimate after 5 s without a reading.'],
+  '由你自己输入，只保存在本机浏览器里。': ['あなたが入力した値で、この端末のブラウザにのみ保存されます。', 'Entered by you and stored only in this browser.'],
+  '2126 概念演示：发力肌群、累计疲劳、恢复预测、关节负荷、血氧、呼吸、核心体温、血乳酸、肌氧、出汗量，以及小人身上的血氧和心跳粒子，都是按动作和运动强度推演的，不是任何传感器的读数。': [
+    '2126 年のコンセプト演出：使用筋群、累積疲労、回復予測、関節負荷、血中酸素、呼吸、深部体温、血中乳酸、筋酸素、発汗量、そしてフィギュアの血中酸素と心拍の粒子は、動作と運動強度から推定したもので、センサーの測定値ではありません。',
+    '2126 concept: working muscles, fatigue, recovery, joint load, SpO₂, breathing, core temperature, lactate, muscle oxygen, sweat, and the blood-oxygen and heartbeat particles on the figure are modelled from the exercise and its intensity. None of them are sensor readings.'],
+  '重心与左右平衡由 3D 骨架的各段位置按人体质量分布算出；演示模式下骨架来自示例动作。': ['重心と左右バランスは、3D 骨格の各部位の位置を人体の質量分布で重み付けして計算します。デモでは骨格はサンプル動作のものです。', 'Centre of mass and left/right balance are computed from the 3D skeleton, weighting each segment by typical body mass. In demo mode the skeleton comes from the sample move.'],
+  '「演示」播放内置的示例动作；「摄像头」用 MediaPipe Pose 的 3D 关键点驱动小人，并按所选动作的规则计数，画面只在本机处理，不会上传。': [
+    '「デモ」は内蔵のサンプル動作を再生します。「カメラ」は MediaPipe Pose の 3D キーポイントでフィギュアを動かし、選んだ動作のルールでカウントします。映像はこの端末内だけで処理され、アップロードされません。',
+    '"Demo" plays the built-in sample moves. "Camera" drives the figure from MediaPipe Pose 3D keypoints and counts by the selected exercise\'s rule; video is processed on this device only and never uploaded.'],
+  // camera status
+  '请允许使用摄像头…': ['カメラの使用を許可してください…', 'Please allow camera access…'], '正在加载识别模型…': ['認識モデルを読み込み中…', 'Loading pose model…'],
+  '未检测到人体 · 请让全身入镜': ['人物が検出されません · 全身を映してください', 'No person detected · step back into view'], '跟踪中 · {0} fps': ['追跡中 · {0} fps', 'Tracking · {0} fps'],
+  '请后退一点，让全身入镜 · {0} fps': ['全身が映るように少し下がってください · {0} fps', 'Step back so your whole body is in view · {0} fps'],
+  '摄像头模式': ['カメラモード', 'Camera mode'], '实时跟随': ['リアルタイム追従', 'Live follow'], '动作复现': ['動作リプレイ', 'Replay'],
+  '请开始运动': ['運動を始めてください', 'Start moving'], '计数中': ['カウント中', 'Counting'], '已结束': ['終了', 'Done'],
+  '需要通过 localhost 或 https 打开页面才能使用摄像头': ['カメラを使うには localhost か https でページを開く必要があります', 'Open the page via localhost or https to use the camera'],
+  '摄像头权限被拒绝，请在地址栏里允许后重试': ['カメラの許可が拒否されました。アドレスバーで許可してから再試行してください', 'Camera permission denied; allow it in the address bar and try again'],
+  '没有找到可用的摄像头': ['使えるカメラが見つかりません', 'No camera found'], '摄像头被其他程序占用': ['カメラが他のアプリで使用中です', 'The camera is in use by another app'],
+  '摄像头或识别模型启动失败': ['カメラまたは認識モデルを起動できませんでした', 'Camera or pose model failed to start'],
+  '当前浏览器无法启用 WebGL，小人无法显示。请换用新版 Chrome、Edge 或 Safari 打开。': ['このブラウザでは WebGL を使えないため、フィギュアを表示できません。最新の Chrome、Edge、Safari で開いてください。', 'WebGL is unavailable in this browser, so the figure cannot be shown. Please open the page in a recent Chrome, Edge or Safari.']
+};
+
+export const LANGS = ['zh', 'ja', 'en'];
+/** translate a Chinese source string into `lang`, filling {0}, {1}… in order */
+export const translate = (lang, s, ...a) => { const e = I18N[s]; let r = lang !== 'zh' && e ? e[lang === 'ja' ? 0 : 1] : s; a.forEach((v, i) => { r = r.split('{' + i + '}').join(v); }); return r; };

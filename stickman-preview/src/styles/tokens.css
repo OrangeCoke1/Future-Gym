@@ -1,0 +1,29 @@
+/* Layout: one screen, no scrolling, flat and minimal. A sage page with three columns between a slim top bar and
+   a bottom row: left = the rep counter as one orange block plus two hairline read-outs; centre = the stage on an
+   ivory tile; right = heart rate as one dark block, then energy and session stats set straight on the page with
+   hairlines. Bottom row = playback · action picker · view. Everything secondary lives in a slide-over panel.
+   Flat fills only: no gradients, glows or shadows. Sizes follow the viewport height through --u.
+   Below 860px wide it becomes a scrolling column. */
+:root{
+  color-scheme:light;
+  --bg:#BEC3AD; --paper:#E9E8D8; --ink:#1D231E; --ivory:#F1F0E2;
+  --muted:#59614F; --dim:#868D79;
+  --line:rgba(29,35,30,.2); --line2:rgba(29,35,30,.42);
+  --acc:#E0704A;
+  --f:"Inter","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --fn:"Unbounded","Inter","Noto Sans SC",sans-serif;
+  --u:clamp(8px,1.45vh,16px);
+  --r:clamp(18px,3.2vh,32px);
+}
+html[lang="ja"]{               /* Japanese glyph shapes for kanji when the page is in Japanese */
+  --f:"Inter","Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --fn:"Unbounded","Inter","Noto Sans JP",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:13px;line-height:1.45;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+button{color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ink);outline-offset:2px}

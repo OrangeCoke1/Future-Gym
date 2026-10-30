@@ -1,9 +1,11 @@
-# Minimal static file server for local development (no Node / Python needed).
-# Usage: powershell -ExecutionPolicy Bypass -File serve.ps1 [-Port 8000] [-Open]
+# Minimal static file server (no Node / Python needed) for the built app.
+# Usage: powershell -ExecutionPolicy Bypass -File serve.ps1 [-Port 8000] [-Root dist] [-Open]
+#   -Root  folder to serve, relative to this script (default: dist, the output of `npm run build`)
 #   -Open  also opens the page in the default browser once the server is listening
-param([int]$Port = 8000, [switch]$Open)
+param([int]$Port = 8000, [string]$Root = 'dist', [switch]$Open)
 
-$root = [System.IO.Path]::GetFullPath($PSScriptRoot)
+$root = [System.IO.Path]::GetFullPath($(if ([System.IO.Path]::IsPathRooted($Root)) { $Root } else { Join-Path $PSScriptRoot $Root }))
+if (-not [System.IO.File]::Exists((Join-Path $root 'index.html'))) { throw "$root\index.html not found. Build the app first: npm install, then npm run build" }
 $mime = @{
   '.html' = 'text/html; charset=utf-8'; '.js' = 'text/javascript; charset=utf-8'; '.mjs' = 'text/javascript; charset=utf-8'
   '.css' = 'text/css; charset=utf-8'; '.json' = 'application/json; charset=utf-8'; '.wasm' = 'application/wasm'

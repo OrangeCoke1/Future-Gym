@@ -1,0 +1,25 @@
+@media (prefers-reduced-motion:reduce){ .drawer,.scrim{transition:none} .drip.on i{animation:none} }
+
+/* narrow screens: one scrolling column, stage first */
+@media (max-width:860px){
+  body{overflow:auto}
+  .app{position:static;display:flex;flex-direction:column;gap:14px;padding:14px}
+  .top{grid-template-columns:1fr auto}
+  .top-c{grid-column:1/-1;grid-row:2;justify-content:flex-start}
+  .stage{height:60svh;min-height:360px;flex:none}
+  .bot{order:2;flex-direction:column;align-items:stretch;gap:12px}
+  .side.l{order:3}
+  .side.r{order:4}
+  .ctl{flex:none}
+  .ctl.r{justify-content:flex-start}
+  .dock,.chips{justify-content:flex-start}
+  .split{display:none}
+  [data-rz]{flex:none;overflow:visible}
+  .side{gap:14px}
+  .side>.fixed{margin-top:0}
+  .side.r .bare .fill{flex:none;height:56px}
+  .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  .st-br{display:none}
+  .count{--cs:72px}
+  .fill{flex:none;height:220px}
+}

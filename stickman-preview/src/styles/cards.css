@@ -1,0 +1,58 @@
+/* ---------- left column: a square tile, a flat tile, then a pair of small tiles ---------- */
+.tile.bal{background:var(--paper)}
+.lr{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.lr b{font-family:var(--fn);font-size:13px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.tile.water{background:#A9B7C8;gap:calc(var(--u)*.6)}
+.w-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.w-top .num{font-size:clamp(16px,2.8vh,22px);white-space:nowrap}
+.w-top .row{margin-left:auto;flex-wrap:nowrap;gap:4px}
+.w-top .drink{font-size:11px;padding:4px 9px;white-space:nowrap}
+.w-mid{flex:1;min-height:0;display:flex;align-items:center;gap:12px}
+.bottle{height:100%;max-height:64px;min-height:16px;width:auto;max-width:66%;aspect-ratio:6/1;flex:0 1 auto;min-width:0;display:block}
+.b-cap{fill:var(--ink)}
+.b-glass{fill:var(--ivory)}
+.b-water{fill:#5E7BA4;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.b-marks path{fill:none;stroke:var(--ink);stroke-width:1.5;opacity:.5}
+.w-sub{display:flex;flex-direction:column;gap:1px;white-space:nowrap;line-height:1.3}
+.w-sub b{font-weight:600;font-variant-numeric:tabular-nums}
+.tile.water .num small,.tile.water .sub{color:var(--ink);opacity:.75}
+.pair{display:flex}
+.pair .tile{padding:calc(var(--u)*1.1) clamp(12px,1.2vw,18px);gap:calc(var(--u)*.4);overflow:hidden}
+.tile.sweat{background:#5E7BA4;color:var(--ivory)}
+.pair .fill{min-height:0}
+.vis{flex:1;min-height:0;display:flex;align-items:center;gap:clamp(8px,1vw,16px)}
+.drop{height:100%;max-height:72px;width:auto;aspect-ratio:40/52;flex:none;display:block}      /* fills up as the sweat rate climbs */
+.drop path{fill:none;stroke:currentColor;stroke-width:2}
+.drop rect{fill:currentColor;transition:y .5s ease,height .5s ease}
+.tile.sweat .drip{font-size:clamp(11px,2vh,16px)}
+.tile.sweat .num{font-size:clamp(20px,3.6vh,32px)}
+.tile.sweat .num small{color:inherit;opacity:.8}
+.tile.sweat .sub b{font-weight:600;font-variant-numeric:tabular-nums}
+.tile.load{background:var(--acc);color:var(--ivory)}
+.tile.load .mus{margin-top:0;gap:calc(var(--u)*.35)}
+.tile.load .mus i{background:rgba(241,240,226,.35)}
+.tile.load .mus i::after{background:var(--ivory)}
+/* sweat indicator: three beads that form and fall while the body is sweating; still and pale when it is not (sized in em) */
+.drip{position:relative;display:block;font-size:13px;width:3.7em;height:2.9em;flex:none}
+.drip i{position:absolute;top:.15em;width:1em;height:1em;background:currentColor;border-radius:0 50% 50% 50%;transform:rotate(45deg);opacity:.35}
+.drip i:nth-child(1){left:.15em}
+.drip i:nth-child(2){left:1.4em}
+.drip i:nth-child(3){left:2.65em}
+.drip.on i{opacity:1}
+@keyframes drip{0%{transform:translateY(-.4em) rotate(45deg) scale(.2);opacity:0}22%{transform:translateY(0) rotate(45deg) scale(1);opacity:1}55%{transform:translateY(.3em) rotate(45deg) scale(1);opacity:1}100%{transform:translateY(1.9em) rotate(45deg) scale(.85);opacity:0}}
+.drip.on i{animation:drip var(--dur,1.6s) ease-in infinite}
+.drip.on i:nth-child(2){animation-delay:calc(var(--dur,1.6s)*-.4)}
+.drip.on i:nth-child(3){animation-delay:calc(var(--dur,1.6s)*-.75)}
+.kv{margin-left:auto;font-family:var(--fn);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.g-ang{height:clamp(36px,6.4vh,52px);margin-top:calc(var(--u)*.3)}
+
+/* ---------- right: vitals ---------- */
+.heart{width:12px;height:12px;fill:var(--acc);transform-origin:center;transition:transform .08s}
+.g-trend{height:clamp(20px,3.8vh,36px)}
+.side.r .bare .fill{min-height:20px}
+.num{font-family:var(--fn);font-size:clamp(22px,4.2vh,38px);font-weight:500;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.num small{font-family:var(--f);font-size:12px;font-weight:400;color:var(--muted);margin-left:6px;letter-spacing:0}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stats div{border-top:1px solid var(--line2);padding-top:calc(var(--u)*.5)}
+.stats b{display:block;font-family:var(--fn);font-size:clamp(14px,2.3vh,19px);font-weight:500;line-height:1.3;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stats span{font-size:11px;color:var(--muted)}

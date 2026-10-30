@@ -4,29 +4,35 @@
 
 ## 启动
 
-页面必须通过 `http://localhost` 打开。**不要直接双击 `index.html`**：摄像头和识别模型在 `file://` 下都无法加载。
+这是一个 Vue 3（JavaScript）+ Vite 项目，页面要先构建再打开。页面必须通过 `http://localhost` 打开，**不要直接双击 `index.html` 或 `dist/index.html`**：摄像头和识别模型在 `file://` 下都无法加载。
 
-### Windows（不需要安装任何东西）
+### 开发（需要 Node.js）
 
-双击 `start.bat`。它会启动本地服务器并自动打开 `http://localhost:8000`。
-关掉弹出的黑色窗口，或在窗口里按 `Ctrl+C`，服务器就停了。
+在本文件夹里运行：
 
-也可以手动在本文件夹里运行：
+```
+npm install        # 第一次
+npm run dev        # 开发服务器，http://localhost:8000，改代码后页面自动刷新
+npm run build      # 构建到 dist/
+npm run preview    # 在 http://localhost:8000 预览 dist/
+npm run lint       # ESLint
+```
+
+端口固定为 8000（`poster/bake-figure-a.ps1` 依赖这个端口），被占用时会直接报错，而不是换一个端口。
+
+### Windows 双击运行
+
+双击 `start.bat`。如果还没有 `dist/`，它会先运行 `npm install` 和 `npm run build`（这一步需要 Node.js），然后用 `serve.ps1` 启动本地服务器并自动打开 `http://localhost:8000`。关掉弹出的黑色窗口，或在窗口里按 `Ctrl+C`，服务器就停了。
+
+**没有 Node.js 的电脑**：在装了 Node.js 的电脑上运行一次 `npm run build`，把生成的 `dist/` 文件夹拷到这台电脑的本文件夹里，再双击 `start.bat`。`dist/` 不提交到 git。
+
+也可以手动运行（`-Root` 默认是 `dist`）：
 
 ```
 powershell -ExecutionPolicy Bypass -File serve.ps1 -Open
 ```
 
 端口被占用时换一个：`powershell -ExecutionPolicy Bypass -File serve.ps1 -Port 8080 -Open`
-
-### 有 Node.js 或 Python 的机器（含 macOS / Linux）
-
-在本文件夹里运行任意一条，然后打开终端里显示的 localhost 地址：
-
-```
-npx serve
-python -m http.server 8000
-```
 
 ### 浏览器
 
@@ -36,16 +42,35 @@ python -m http.server 8000
 
 | 文件 | 说明 |
 | --- | --- |
-| `index.html` | 整个应用，HTML、CSS、JS 都在这一个文件里 |
-| `three.min.js` | Three.js r149，本地引用 |
-| `male_body.glb` | 人体模型（CC BY 4.0，作者 Alexander Antipov），小人的身体形状来自它 |
-| `mediapipe/` | MediaPipe Pose Landmarker（tasks-vision 0.10.14）的脚本、wasm 和 full 模型，本地引用，约 29 MB |
-| `serve.ps1` | 不依赖 Node / Python 的本地静态服务器 |
-| `start.bat` | 双击启动 `serve.ps1` 并打开页面 |
-| `poster/index.html` | 宣传海报草稿（日文，6 个方向：A 半调网点、B 多色几何拼块、C 手绘波浪、D 线刻、E 等高线、F 孔版双色；A1 竖版）。页面上每张只有标题和两个按钮。可以直接双击打开，也可以在服务器启动后打开 `http://localhost:8000/poster/`。页面上点线是裁切线，外面是 3 mm 出血；「A1 印刷用 300 dpi」按钮导出 7087 × 10004 px 的 JPEG（RGB，已写入 300 dpi）。海报 A、D、E、F 的人体来自 `male_body.glb`，下方都带模型署名 |
+| `index.html`、`src/` | 应用本体（Vue 3 + JavaScript），结构见下方「代码结构」 |
+| `public/three.min.js` | Three.js r149，只给 `poster/` 里的生成页面用；应用本身用 npm 的 `three@0.149.0`（同一版本） |
+| `public/male_body.glb` | 人体模型（CC BY 4.0，作者 Alexander Antipov），小人的身体形状来自它 |
+| `public/mediapipe/` | MediaPipe Pose Landmarker（tasks-vision 0.10.14）的 wasm 和 full 模型，本地提供，约 29 MB；脚本来自 npm 的 `@mediapipe/tasks-vision@0.10.14`（与这里的 wasm 是同一版本） |
+| `public/` 里的文件 | 构建时原样复制到 `dist/`，访问地址不变（`/male_body.glb`、`/three.min.js`、`/mediapipe/…`） |
+| `vite.config.js` | 端口 8000；构建时把 `poster/` 原样复制到 `dist/poster/`；three.js 单独打包 |
+| `serve.ps1` | 不依赖 Node / Python 的本地静态服务器，默认提供 `dist/` |
+| `start.bat` | 双击：需要时先构建，再启动 `serve.ps1` 并打开页面 |
+| `poster/index.html` | 宣传海报草稿（日文，6 个方向：A 半调网点、B 多色几何拼块、C 手绘波浪、D 线刻、E 等高线、F 孔版双色；A1 竖版）。页面上每张只有标题和两个按钮。可以直接双击打开，也可以在服务器启动后打开 `http://localhost:8000/poster/`。页面上点线是裁切线，外面是 3 mm 出血；「A1 印刷用 300 dpi」按钮导出 7087 × 10004 px 的 JPEG（RGB，已写入 300 dpi）。海报 A、D、E、F 的人体来自 `male_body.glb`，下方都带模型署名。海报不经过 Vite 打包 |
 | `poster/figures.js` | 海报 E（站立）、F（深蹲）用的人体明暗图和关节点，由 `bake-figures.html` 给模型摆姿势后渲染。文件里另有冲刺、开合跳、弓步三个姿势，因为简单蒙皮在肩部会撕裂拉伸，没有使用 |
 | `poster/figure-a.js` | 海报 A 和 D 用的人体明暗图（由 `male_body.glb` 预先渲染），让海报页面不需要 WebGL、也不需要读取模型文件 |
-| `poster/bake-figure-a.html`、`bake-figures.html`、`bake-figure-a.ps1` | 重新生成上面两个文件：启动服务器后运行 `powershell -ExecutionPolicy Bypass -File poster\bake-figure-a.ps1`（生成 `figure-a.js`），或加参数 `-Page bake-figures.html -Out figures.js -Var FIGS`（生成 `figures.js`）。需要 Edge 或 Chrome |
+| `poster/bake-figure-a.html`、`bake-figures.html`、`bake-figure-a.ps1` | 重新生成上面两个文件：启动服务器（`npm run dev`，或 `start.bat`）后运行 `powershell -ExecutionPolicy Bypass -File poster\bake-figure-a.ps1`（生成 `figure-a.js`），或加参数 `-Page bake-figures.html -Out figures.js -Var FIGS`（生成 `figures.js`）。需要 Edge 或 Chrome |
+
+## 代码结构
+
+下文提到的「代码里的 `XXX`」都还是原来的名字，只是分到了不同文件里：
+
+| 目录 | 内容 |
+| --- | --- |
+| `src/core/` | 向量工具（`math.js`）；骨架 `B`、`solve`、`lerpQ`、`angle3`（`skeleton.js`）；12 个动作 `ACT`（`actions.js`） |
+| `src/sim/` | 模拟和估算：`MUS`（`muscles.js`）、`updateLoad`（`load.js`）、心率与能量 `updateMetrics`、`keytel`（`metrics.js`）、`updateBio`（`bio.js`）、水分（`hydration.js`）、`MASS` 重心（`balance.js`） |
+| `src/pose/` | 摄像头关键点 → 骨架（`camera.js`）；摄像头组的识别规则 `FIT`（`fit.js`，逐行移植，他们改规则时这里要同步改） |
+| `src/render/` | Three.js 舞台（`stage.js`）：SDF 实体（`sdfBody.js`、`ANAT`）、模型加载和蒙皮（`bodyModel.js`、`rig.js` 的 `MJ`、`skinOf`、`poser.js` 的 `blend`、`girdleW`）、握拳（`hand.js` 的 `makeFist`）、粒子（`particles.js` 的 `uForm`）、摩尔纹（`moire.js` 的 `MOIRE_PX`）、角度叠加层（`overlay.js`） |
+| `src/charts/` | 卡片上的 2D 图：心率、能量、趋势、量角器、重心、关节负荷、体表热量（`therm.js` 的 `THERM`、`OUTLINE_R`） |
+| `src/engine/` | 每帧主循环 `createEngine`（`engine.js`）、计数规则（`reps.js`）、摄像头输入（`camera.js`）。主循环不依赖 Vue，所有状态在一个普通对象里，每帧原地更新 |
+| `src/components/` | Vue 组件：顶栏、底栏、舞台和舞台上的读数、左右两栏的卡片、面板、拖动手柄 |
+| `src/stores/` | Pinia：设置（语言、显示开关、布局、摄像头模式）、个人资料、饮水记录；本机存储沿用原来的 `stick.*` 键，读取时先校验，数据损坏时用默认值 |
+| `src/i18n/` | 翻译表 `I18N`（`messages.js`）和 `useI18n()` |
+| `src/styles/` | 原来的样式表，按区域拆成几个文件 |
 
 字体 Unbounded、Inter 和 Noto Sans SC 走 Google Fonts；离线时会退回系统字体，功能不受影响。
 
@@ -58,7 +83,7 @@ python -m http.server 8000
 - **关节角度**：小人关节上是一条细弧和角度数字。舞台右下角是半圆量角器（0° 在左、180° 在右）：橙色弧段是当前动作的计数区间，指针是被追踪一侧的角度，空心圈是身体另一侧同一关节的角度，可以看左右是否对称。
 - **调整卡片大小**：卡片之间的空隙都是拖动手柄，鼠标移上去会出现一条短线。可以拖的有：左栏和舞台之间、舞台和右栏之间（改列宽）；左栏三层之间、出汗和关节负荷之间、心率和能量消耗之间（改相邻两张卡片的大小）。也可以用 Tab 选中手柄后按方向键。卡片里的图会跟着卡片大小自适应。布局保存在本机浏览器里，面板里的「重置布局」恢复默认。手机宽度下没有这个功能。
 - **面板**：右上角「面板」里是次要内容：显示选项（光影、轮廓、肌群、角度、关键点、小人颜色）、个人资料、本次训练、数据说明。按 Esc 或点空白处关闭。
-- **语言**：右上角切换中文 / 日本語 / English，选择保存在本机浏览器里。翻译表在 `index.html` 里的 `I18N`，以中文原文为键；缺翻译时显示中文。本说明文件只有中文。
+- **语言**：右上角切换中文 / 日本語 / English，选择保存在本机浏览器里。翻译表在 `src/i18n/messages.js` 里的 `I18N`，以中文原文为键；缺翻译时显示中文。本说明文件只有中文。
 - **粒子全息**（默认）：小人是一个完整的人体粒子云（约两万二千个点，取自人体模型表面：约七成贴着皮肤，两成填在皮下，一成浮在体外形成一圈散逸光晕）。外观是细密的冰蓝闪光：比身体中心更靠近镜头的点偏白、更亮，靠后的点渐变成深蓝，所以看起来有体积；亮度保持稳定，不闪烁。只在打开页面或切换到粒子模式时，粒子先散成一团缓慢旋转的球形云，再陆续飞回各自的位置组成人形（约 2.4 秒，代码里的 `uForm`、`reform`）；切换动作时不会再散开。粒子在站立姿势下生成一次，之后通过蒙皮跟着骨架变形：每个点跟随最近的骨头，关节附近的点在相邻两段骨头之间过渡，所以肩、髋、肘、膝不会断开，跑步时四肢也不会互相穿插（代码里的 `bodyD`、`skinOf`、`skin`）。叠加的层（全部是概念模拟）：
   - 肌肉：用力的肌群偏橙色（只变颜色，不变亮）；
   - 血氧：每段肢体一条动脉（鲜红，血氧越低越暗）和一条静脉（偏紫，肌氧越低越蓝），粒子沿血管流动，心率越高流得越快；
