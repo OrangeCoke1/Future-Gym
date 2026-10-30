@@ -57,3 +57,7 @@
 ## [2026-10-30 18:07] 规则文件改名
 - **Goal**: 规则文件改为英文名「全局规则」
 - **Changes**: `EDITING_RULES.md` → `GLOBAL_RULES.md`（git mv，仍在根目录）；`CLAUDE.md` 的引用改为 `@GLOBAL_RULES.md`，`.prompt.md` 中的引用同步更新（上面的历史记录保持原文）
+
+## [2026-10-30 18:10] 删除 .prompt.md
+- **Goal**: 用户认为 .prompt.md 没有用，删除
+- **Changes**: `git rm .prompt.md`（内容仍在 git 历史中）；GLOBAL_RULES.md 第 1 节仍要求把计划写进 .prompt.md，待确认是否修改规则
