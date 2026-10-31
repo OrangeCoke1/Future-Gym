@@ -107,8 +107,8 @@ export function createBodyModel({ scene, U, poser, particles }) {
       pt.skin = [b1[i0], b2[i0], w2[i0], pv[i0]];        // same weights as the mesh, so both views bend alike
       pts.push(pt);
     }
-    particles.build(rig, pts);
-    const fistOf = makeFist(rig), PB = particles.body;
+    const PB = particles.build(rig, pts), fistOf = makeFist(rig);
+    SM.pb = PB;
     SM.fist = fistOf(rest, N0); PB.fist = fistOf(PB.rest, null, k => !PB.ves[k]);
   }
   /** g = grip amount of the hands (0 open – 1 fist), one number or per hand { L, R } */
@@ -123,7 +123,12 @@ export function createBodyModel({ scene, U, poser, particles }) {
     SM.posAttr.needsUpdate = true; SM.nrmAttr.needsUpdate = true;
   }
   return {
-    meshMat, load: loadBodyModel, skin: skinMesh,
+    meshMat, meshLineMat, load: loadBodyModel, skin: skinMesh,
+    /** make this model's particle body the one on screen */
+    activate() { if (SM) particles.use(SM.pb); },
+    /** pose and skin for this frame (particles in the particle view, else the mesh); g = grip of each hand */
+    frame(P, D, g, holo, time, flow) { if (holo) particles.skin(P, D, time, flow, g); else skinMesh(P, D, g); },
+    gripOf: (n, pos, axis) => poser.gripOf(n, pos, axis),
     get loaded() { return !!SM; }, get solid() { return solid; }, get solidLine() { return solidLine; }
   };
 }

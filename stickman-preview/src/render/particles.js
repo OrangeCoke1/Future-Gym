@@ -77,15 +77,21 @@ export function createParticles({ scene, PU, poser }) {
       const u = Math.random() * 2 - 1, a = Math.random() * TAU, q = Math.sqrt(1 - u * u), r = 0.04 * Math.cbrt(Math.random());
       add(v3(q * Math.cos(a) * r, u * r * 1.2, q * Math.sin(a) * r), 4, [0, 0, 0], -1, { heart: heartC });
     }
-    const NP = b1.length, pos = new Float32Array(NP * 3), geo = new THREE.BufferGeometry();
-    const posAttr = new THREE.BufferAttribute(pos, 3); posAttr.setUsage(THREE.DynamicDrawUsage);
-    geo.setAttribute('position', posAttr);
-    for (const [k, v] of [['aType', type], ['aRnd', rnd], ['aZone', zone]]) geo.setAttribute(k, new THREE.Float32BufferAttribute(v, 1));
-    points.geometry.dispose(); points.geometry = geo;
+    const NP = b1.length, { geo, pos, posAttr } = makeBody(type, rnd, zone);
     const gw = new Float32Array(NP);
     for (let k = 0; k < NP; k++) if (!ves[k]) gw[k] = girdleW(rig, rest[k * 3], rest[k * 3 + 1], rest[k * 3 + 2]);
-    PB = { rig, rest: new Float32Array(rest), b1: new Uint8Array(b1), b2: new Uint8Array(b2), w2: new Float32Array(w2), pv: new Uint8Array(pv), th: new Float32Array(th), gw, ves, rnd, NP, pos, posAttr };
+    use({ rig, rest: new Float32Array(rest), b1: new Uint8Array(b1), b2: new Uint8Array(b2), w2: new Float32Array(w2), pv: new Uint8Array(pv), th: new Float32Array(th), gw, ves, rnd, NP, geo, pos, posAttr });
+    return PB;
   }
+  /** a particle geometry: per point its type (0 body, 5 halo, 2 artery, 3 vein, 4 heart), random and muscle zone; positions written per frame */
+  function makeBody(type, rnd, zone) {
+    const geo = new THREE.BufferGeometry(), pos = new Float32Array(type.length * 3), posAttr = new THREE.BufferAttribute(pos, 3);
+    posAttr.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('position', posAttr);
+    for (const [k, v] of [['aType', type], ['aRnd', rnd], ['aZone', zone]]) geo.setAttribute(k, new THREE.Float32BufferAttribute(v, 1));
+    return { geo, pos, posAttr };
+  }
+  /** show this particle body (bodies are kept, so switching models back and forth is instant) */
+  function use(pb) { PB = pb; points.geometry = pb.geo; }
   /** g = grip amount of the hands (0 open – 1 fist), one number or per hand { L, R } */
   function skinParticles(P, D, time, flow, g) {
     applyFist(PB.fist, PB.rest, null, g); poser.setGirdle(PB.gw);
@@ -105,13 +111,14 @@ export function createParticles({ scene, PU, poser }) {
     PB.posAttr.needsUpdate = true;
   }
   // procedural body first (always available): even volume sampling inside the rest-pose shape
+  let procPB = null;
   {
     const pts = [];
     for (let tries = 0; pts.length < 10000 && tries < 600000; tries++) {
       const p = v3(lerp(-0.42, 0.42, Math.random()), lerp(-0.82, 0.73, Math.random()), lerp(-0.2, 0.28, Math.random()));
       if (bodyD(p) <= 0) pts.push(p);
     }
-    buildParticles(makeRig(RJ), pts);
+    procPB = buildParticles(makeRig(RJ), pts);
   }
   // floating particles: a loose cloud over the platform, densest close to where the figure stands. They live in world
   // space and drift on their own (slowly rising, swaying); they do NOT follow the figure.
@@ -131,7 +138,9 @@ export function createParticles({ scene, PU, poser }) {
       }` }));
   motes.frustumCulled = false; scene.add(motes);
   return {
-    points, motes, build: buildParticles, skin: skinParticles,
+    points, motes, build: buildParticles, skin: skinParticles, makeBody, use,
+    /** the built-in particle body (used until a model has loaded) */
+    get procedural() { return procPB; },
     /** the current particle body (rest points, weights, vessels…) */
     get body() { return PB; }
   };

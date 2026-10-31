@@ -1,7 +1,7 @@
 // Hands: MediaPipe Hand Landmarker (21 points per hand) on the same camera frames as the pose, while 面板 → 手部识别 is
 // on. Each detected hand is matched to the person's left or right wrist, then mirrored like the body. What the figure
-// can show: the model has no finger bones, so a hand drives its grip (open ↔ fist) and its wrist roll; the fingers
-// themselves are drawn in the camera window, and a few gestures are named.
+// can show: a hand drives its grip (open ↔ fist), each finger's curl (the rigged models, Xbot / Michelle, bend every
+// finger; male_body.glb has no finger bones and only closes the whole hand) and its wrist roll; a few gestures are named.
 import { V, sub, len, nrm, add, mul, dot, TAU, C } from '../core/math.js';
 
 /** finger connections between the 21 hand landmarks (0 = wrist; thumb 1–4, index 5–8, middle 9–12, ring 13–16, pinky 17–20) */
@@ -10,10 +10,10 @@ export const HAND_BONES = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7
 const HELD = 300;                                     // ms a hand's grip and roll are kept after it was last seen
 
 /** @typedef {import('../core/math.js').Vec3} Vec3 */
-/** @typedef {{ lm2d: {x: number, y: number}[] | null, grip: number, across: Vec3 | null, gesture: string | null, seen: number }} HandState
- *   lm2d = image landmarks (0..1), grip 0 open – 1 fist (smoothed), across = palm axis from the pinky to the index knuckle in
+/** @typedef {{ lm2d: {x: number, y: number}[] | null, grip: number, curl: number[], across: Vec3 | null, gesture: string | null, seen: number }} HandState
+ *   lm2d = image landmarks (0..1), grip 0 open – 1 fist (smoothed), curl = per finger (thumb … pinky) 0 straight – 1 curled (smoothed), across = palm axis from the pinky to the index knuckle in
  *   figure space (sets the wrist roll), gesture = Chinese label or null, seen = last detection (ms) */
-const hand = () => ({ lm2d: null, grip: 0, across: null, gesture: null, seen: -1e9 });
+const hand = () => ({ lm2d: null, grip: 0, curl: [0, 0, 0, 0, 0], across: null, gesture: null, seen: -1e9 });
 /** @returns {{ L: HandState, R: HandState }} keyed by the figure's side */
 export const createHands = () => ({ L: hand(), R: hand() });
 export function resetHands(H) { Object.assign(H.L, hand()); Object.assign(H.R, hand()); }
@@ -27,6 +27,14 @@ export function gripOf(w) {
   let r = 0;
   for (const [tip, mcp] of [[8, 5], [12, 9], [16, 13], [20, 17]]) r += dist(w[tip], w[0]) / Math.max(1e-4, dist(w[mcp], w[0]));
   return Math.min(1, Math.max(0, (1.85 - r / 4) / 0.8));
+}
+
+/** curl of each finger 0 (straight) – 1 (curled): [thumb, index, middle, ring, pinky]. Fingers: tip-to-wrist over
+ * knuckle-to-wrist distance (≈ 2 straight, ≈ 1 curled); thumb: tip-to-pinky-knuckle over its base-to-pinky-knuckle (≈ 1.4 / 1) */
+export function curlOf(w) {
+  const c01 = x => Math.min(1, Math.max(0, x));
+  const f = [[8, 5], [12, 9], [16, 13], [20, 17]].map(([tip, mcp]) => c01((1.85 - dist(w[tip], w[0]) / Math.max(1e-4, dist(w[mcp], w[0]))) / 0.8));
+  return [c01((1.35 - dist(w[4], w[17]) / Math.max(1e-4, dist(w[2], w[17]))) / 0.35), ...f];
 }
 
 /** which fingers are straight: [thumb, index, middle, ring, pinky] */
@@ -71,6 +79,7 @@ export function ingestHands(H, res, pose2d, now, mir) {
     used[n] = true;
     const h = H[n], dt = Math.max(0, now - h.seen) / 1000, a = h.seen < 0 || dt > 0.5 ? 1 : 1 - Math.exp(-dt / 0.08);
     h.grip += (gripOf(w) - h.grip) * a;
+    const cu = curlOf(w); for (let f = 0; f < 5; f++) h.curl[f] += (cu[f] - h.curl[f]) * a;
     // palm axis, MediaPipe camera space (x right, y down, z away) → figure space (X = character's left, Y up, Z front)
     const ac = sub(V(mir ? -w[5].x : w[5].x, -w[5].y, -w[5].z), V(mir ? -w[17].x : w[17].x, -w[17].y, -w[17].z));
     if (len(ac) > 1e-4) h.across = h.across && a < 1 ? nrm(add(h.across, mul(sub(nrm(ac), h.across), a))) : nrm(ac);

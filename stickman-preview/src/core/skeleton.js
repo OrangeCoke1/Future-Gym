@@ -7,7 +7,8 @@ import { V, add, sub, mul, dot, len, nrm, rotX, rotY, rotZ, lerp, sine, clamp, T
  *   armL: LimbParams, armR: LimbParams, legL: LimbParams, legR: LimbParams }} PoseQ */
 /** @typedef {Record<string, Vec3>} Joints  pel, chest, pelBot, head, sh/el/wr/hand/thumb L|R, hip/kn/an/heel/toe L|R */
 /** @typedef {{ hu: Vec3, hf: Vec3, bodyF: Vec3, side: Vec3, pelF: Vec3 }} Frames */
-/** @typedef {{ P: Joints, D: Frames, prop?: boolean, grip?: { L: number, R: number }, jump?: number }} Solved  grip = tracked hand closure 0..1 (camera) */
+/** @typedef {{ P: Joints, D: Frames, prop?: boolean, grip?: { L: number, R: number }, fingers?: { L: number[] | null, R: number[] | null }, jump?: number }} Solved
+ *  grip = tracked hand closure 0..1 (camera), fingers = tracked curl per finger (thumb … pinky), null when the hand is not seen */
 
 // segment lengths measured on the human model (male_body.glb, 180 cm = 1.5 units); see MJ in the render section
 export const B = { hipW: 0.079, shW: 0.142, torso: 0.487, thigh: 0.318, shin: 0.343, ua: 0.26, fa: 0.225, headUp: 0.178, headR: 0.1,

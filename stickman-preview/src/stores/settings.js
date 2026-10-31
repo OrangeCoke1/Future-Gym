@@ -47,6 +47,9 @@ export const useSettings = defineStore('settings', () => {
   /** pose model (面板 → 识别精度): 'heavy' = 高精度, 'full' = 标准 */
   const camModel = ref(load('stick.camModel', v => (v === 'full' || v === 'heavy' ? v : undefined)) || 'heavy');
   watch(camModel, v => save('stick.camModel', v));
+  /** body model (面板 → 显示 → 人体模型): 'male' (male_body.glb), 'xbot' or 'michelle' (rigged, with finger bones) */
+  const body = ref(load('stick.body', v => (v === 'xbot' || v === 'michelle' ? v : 'male')));
+  watch(body, v => save('stick.body', v));
   /** camera following (面板 → 摄像头跟随), persisted @type {import('../pose/camTune.js').CamTune} */
   const camTune = reactive(load('stick.camTune', loadTune));
   /** @param {Partial<import('../pose/camTune.js').CamTune> | null} p  null = back to defaults */
@@ -55,5 +58,5 @@ export const useSettings = defineStore('settings', () => {
     layout.cl = layout.cr = 0; layout.g = {}; saveLayout();
     Object.assign(camWin, sanitizeCamWin(null)); saveCamWin();
   }
-  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune, camHands, camModel };
+  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune, camHands, camModel, body };
 });

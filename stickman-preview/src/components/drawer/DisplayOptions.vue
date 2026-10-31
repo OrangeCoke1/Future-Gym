@@ -7,6 +7,8 @@ import { useSettings, COLORS } from '../../stores/settings.js';
 const { t } = useI18n();
 const { engine, live } = useEngine();
 const settings = useSettings();
+const BODIES = [['male', '原版'], ['xbot', 'Xbot'], ['michelle', 'Michelle']];
+function pickBody(k) { settings.body = k; engine.setBody(k); }
 const LOOKS = [['particle', '粒子全息'], ['solid', '实体'], ['moire', '摩尔纹']];
 const TOGGLES = [['shade', '光影'], ['line', '轮廓'], ['muscle', '肌群'], ['oxy', '血氧'], ['angle', '角度'], ['dots', '关键点']];
 function pickColor(c) { settings.color = c; engine.setColor(c); }
@@ -30,6 +32,24 @@ function pickColor(c) { settings.color = c; engine.setColor(c); }
           type="button"
           :aria-pressed="String(live.mode === m)"
           @click="engine.setMode(m)"
+        >
+          {{ t(name) }}
+        </button>
+      </div>
+    </div>
+    <div class="row">
+      <span class="note">{{ t('人体模型') }}</span>
+      <div
+        class="seg"
+        role="group"
+        :aria-label="t('人体模型')"
+      >
+        <button
+          v-for="[k, name] in BODIES"
+          :key="k"
+          type="button"
+          :aria-pressed="String(settings.body === k)"
+          @click="pickBody(k)"
         >
           {{ t(name) }}
         </button>
