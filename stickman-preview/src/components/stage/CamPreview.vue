@@ -1,6 +1,7 @@
 <script setup>
-// Camera preview on the stage: the video with the detected landmarks drawn over it (mirrored with the figure),
-// in a floating window — drag the title bar to move it, the corner to resize it, double-click to toggle size.
+// Camera preview: the video with the detected landmarks drawn over it (mirrored with the figure), in a floating window
+// over the whole page (teleported to <body>, position: fixed) — drag the title bar to move it, the corner to resize it,
+// double-click to toggle size. It first appears at the stage's bottom-right corner.
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useEngine } from '../../composables/useEngine.js';
@@ -13,13 +14,14 @@ const settings = useSettings();
 const win = ref(null), video = ref(null), canvas = ref(null);
 const rect = settings.camWin;
 
-/** default: bottom-right, above the angle gauge, ~ a third of the stage width */
+/** default: the stage's bottom-right, above the angle gauge, ~45% of the stage width (page coordinates) */
 const place = (w, h) => {
-  const pw = Math.round(Math.min(Math.max(w * 0.45, 320), 480, w - 40));
+  const st = document.querySelector('.stage'), r = st ? st.getBoundingClientRect() : { left: 0, top: 0, width: w, height: h };
+  const pw = Math.round(Math.min(Math.max(r.width * 0.45, 320), 480, r.width - 40));
   const ph = pw / (Number(live.camAspect) || 4 / 3) + 28;
-  return { x: w - pw - 20, y: Math.max(0, h - ph - 150), w: pw };
+  return { x: Math.round(r.left + r.width - pw - 20), y: Math.round(Math.max(r.top, r.top + r.height - ph - 150)), w: pw };
 };
-const fw = useFloatWin(win, rect, () => live.camAspect, settings.saveCamWin, place);
+const fw = useFloatWin(win, rect, () => live.camAspect, settings.saveCamWin, place, { viewport: true });
 const style = computed(() => ({ left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px' }));
 const big = computed(() => rect.w > WIN_SMALL + 40);
 
@@ -29,60 +31,62 @@ watch(() => [live.camAspect, rect.x < 0], () => nextTick(fw.clamp));
 </script>
 
 <template>
-  <div
-    ref="win"
-    class="cam-win"
-    :style="style"
-    :hidden="!live.camAspect"
-    @pointerdown.stop
-  >
+  <Teleport to="body">
     <div
-      class="cam-bar"
-      tabindex="0"
-      :title="t('拖动移动，拖右下角调整大小，双击切换大小')"
-      :aria-label="t('摄像头画面浮窗，方向键移动，Shift+方向键调整大小')"
-      @pointerdown="fw.start($event, 'move')"
-      @pointermove="fw.move"
-      @pointerup="fw.end"
-      @pointercancel="fw.end"
-      @dblclick="fw.toggleSize"
-      @keydown="fw.key"
+      ref="win"
+      class="cam-win"
+      :style="style"
+      :hidden="!live.camAspect"
+      @pointerdown.stop
     >
-      <span class="k">{{ t('摄像头画面') }}</span>
-      <button
-        type="button"
-        class="cam-sz"
-        :aria-label="big ? t('缩小') : t('放大')"
-        :title="big ? t('缩小') : t('放大')"
-        @pointerdown.stop
-        @click="fw.toggleSize"
+      <div
+        class="cam-bar"
+        tabindex="0"
+        :title="t('拖动移动，拖右下角调整大小，双击切换大小')"
+        :aria-label="t('摄像头画面浮窗，方向键移动，Shift+方向键调整大小')"
+        @pointerdown="fw.start($event, 'move')"
+        @pointermove="fw.move"
+        @pointerup="fw.end"
+        @pointercancel="fw.end"
+        @dblclick="fw.toggleSize"
+        @keydown="fw.key"
       >
-        {{ big ? '−' : '+' }}
-      </button>
-    </div>
-    <div
-      class="cam-box"
-      :class="{ mir: live.mirror }"
-      :style="live.camAspect ? { aspectRatio: live.camAspect } : null"
-    >
-      <video
-        ref="video"
-        playsinline
-        muted
-        :aria-label="t('摄像头画面')"
-      />
-      <canvas
-        ref="canvas"
+        <span class="k">{{ t('摄像头画面') }}</span>
+        <button
+          type="button"
+          class="cam-sz"
+          :aria-label="big ? t('缩小') : t('放大')"
+          :title="big ? t('缩小') : t('放大')"
+          @pointerdown.stop
+          @click="fw.toggleSize"
+        >
+          {{ big ? '−' : '+' }}
+        </button>
+      </div>
+      <div
+        class="cam-box"
+        :class="{ mir: live.mirror }"
+        :style="live.camAspect ? { aspectRatio: live.camAspect } : null"
+      >
+        <video
+          ref="video"
+          playsinline
+          muted
+          :aria-label="t('摄像头画面')"
+        />
+        <canvas
+          ref="canvas"
+          aria-hidden="true"
+        />
+      </div>
+      <span
+        class="cam-rs"
         aria-hidden="true"
+        @pointerdown="fw.start($event, 'size')"
+        @pointermove="fw.move"
+        @pointerup="fw.end"
+        @pointercancel="fw.end"
       />
     </div>
-    <span
-      class="cam-rs"
-      aria-hidden="true"
-      @pointerdown="fw.start($event, 'size')"
-      @pointermove="fw.move"
-      @pointerup="fw.end"
-      @pointercancel="fw.end"
-    />
-  </div>
+  </Teleport>
 </template>
