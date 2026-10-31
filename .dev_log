@@ -85,3 +85,7 @@
 ## [2026-10-31 16:25] 在线预览（Vercel）
 - **Goal**: 不用每次下载压缩包，直接打开网址预览；仓库是私有的，GitHub Pages 需要付费
 - **Changes**: 根目录新增 `vercel.json`（在 `stickman-preview/` 里 `npm ci` + `npm run build`，输出 `stickman-preview/dist`），导入 Vercel 时无需再设置根目录
+
+## [2026-10-31 16:32] 修复 Vercel 构建：根目录被设为 stickman-preview 时找不到目录
+- **Goal**: Vercel 自动把 Root Directory 设成 `stickman-preview`，`cd stickman-preview` 失败
+- **Changes**: 根目录 `vercel.json` 的安装 / 构建命令改为先判断目录是否存在，构建结果复制到根目录 `dist`，`outputDirectory` 改为 `dist`；新增 `stickman-preview/vercel.json`（`npm ci` / `npm run build` / `dist`）。两种根目录设置在本地模拟均构建成功
