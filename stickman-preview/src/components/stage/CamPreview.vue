@@ -24,6 +24,11 @@ const place = (w, h) => {
 const fw = useFloatWin(win, rect, () => live.camAspect, settings.saveCamWin, place, { viewport: true });
 const style = computed(() => ({ left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px' }));
 const big = computed(() => rect.w > WIN_SMALL + 40);
+/** recognised gestures, by the person's own hand (the figure's sides are swapped in mirror view) */
+const gestures = computed(() => (live.handG || '').split('|').filter(Boolean).map(x => {
+  const [n, g] = x.split(':'), own = live.mirror ? (n === 'L' ? 'R' : 'L') : n;
+  return t(own === 'L' ? '左手' : '右手') + ' ' + t(g);
+}).join(' · '));
 
 onMounted(() => engine.attachCamera(video.value, canvas.value));
 // shown for the first time, aspect changed, or layout reset: place / re-clamp once laid out
@@ -51,7 +56,10 @@ watch(() => [live.camAspect, rect.x < 0], () => nextTick(fw.clamp));
         @dblclick="fw.toggleSize"
         @keydown="fw.key"
       >
-        <span class="k">{{ t('摄像头画面') }}</span>
+        <span class="k">{{ t('摄像头画面') }}<span
+          v-if="gestures"
+          class="cam-g"
+        > · {{ gestures }}</span></span>
         <button
           type="button"
           class="cam-sz"

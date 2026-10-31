@@ -43,22 +43,26 @@ export function makeFist(rig) {
   rig.grip = { L: { c: F.L.C, axis: F.L.ew }, R: { c: F.R.C, axis: F.R.ew } };
   // fist data for an array of rest points (and optional normals): which points move, and their open / curled values
   return (rest, nrest, use) => {
-    const idx = [], open = [], fist = [], op = [0, 0, 0], on = [0, 0, 0];
+    const idx = [], lr = [], open = [], fist = [], op = [0, 0, 0], on = [0, 0, 0];
     for (let i = 0; i < rest.length / 3; i++) {
       if (use && !use(i)) continue;
       const o = i * 3, nx = nrest ? nrest[o] : 0, ny = nrest ? nrest[o + 1] : 0, nz = nrest ? nrest[o + 2] : 0;
       if (!curl(rest[o], rest[o + 1], rest[o + 2], nx, ny, nz, op, on)) continue;
-      idx.push(i); open.push(rest[o], rest[o + 1], rest[o + 2], nx, ny, nz); fist.push(op[0], op[1], op[2], on[0], on[1], on[2]);
+      idx.push(i); lr.push(rest[o] > 0 ? 1 : 0); open.push(rest[o], rest[o + 1], rest[o + 2], nx, ny, nz); fist.push(op[0], op[1], op[2], on[0], on[1], on[2]);
     }
-    return { idx: Int32Array.from(idx), open: new Float32Array(open), fist: new Float32Array(fist), k: 0 };
+    return { idx: Int32Array.from(idx), lr: Uint8Array.from(lr), open: new Float32Array(open), fist: new Float32Array(fist), kL: 0, kR: 0 };
   };
 }
-/** blend the hand points between open and curled; g = grip amount 0 (open) – 1 (fist) */
+/** blend the hand points between open and curled; g = grip amount 0 (open) – 1 (fist), one number or per hand { L, R } */
 export function applyFist(fd, rest, nrest, g) {
-  if (!fd || Math.abs(fd.k - g) < 1e-3) return;
-  fd.k = g; const { idx, open, fist } = fd;
+  if (!fd) return;
+  const gL = typeof g === 'number' ? g : g.L, gR = typeof g === 'number' ? g : g.R;
+  const dL = Math.abs(fd.kL - gL) >= 1e-3, dR = Math.abs(fd.kR - gR) >= 1e-3;
+  if (!dL && !dR) return;
+  fd.kL = gL; fd.kR = gR; const { idx, lr, open, fist } = fd;
   for (let j = 0; j < idx.length; j++) {
-    const o = idx[j] * 3, q = j * 6;
+    if (lr[j] ? !dL : !dR) continue;
+    const g = lr[j] ? gL : gR, o = idx[j] * 3, q = j * 6;
     for (let e = 0; e < 3; e++) { rest[o + e] = open[q + e] + (fist[q + e] - open[q + e]) * g; if (nrest) nrest[o + e] = open[q + 3 + e] + (fist[q + 3 + e] - open[q + 3 + e]) * g; }
   }
 }

@@ -86,7 +86,7 @@ export function createParticles({ scene, PU, poser }) {
     for (let k = 0; k < NP; k++) if (!ves[k]) gw[k] = girdleW(rig, rest[k * 3], rest[k * 3 + 1], rest[k * 3 + 2]);
     PB = { rig, rest: new Float32Array(rest), b1: new Uint8Array(b1), b2: new Uint8Array(b2), w2: new Float32Array(w2), pv: new Uint8Array(pv), th: new Float32Array(th), gw, ves, rnd, NP, pos, posAttr };
   }
-  /** g = grip amount of the hands (0 open – 1 fist) */
+  /** g = grip amount of the hands (0 open – 1 fist), one number or per hand { L, R } */
   function skinParticles(P, D, time, flow, g) {
     applyFist(PB.fist, PB.rest, null, g); poser.setGirdle(PB.gw);
     poser.poseBones(PB.rig, P, D); const beat = 1 + 0.32 * PU.uBeat.value, { rest, ves, pos } = PB;

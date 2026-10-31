@@ -60,7 +60,8 @@
 .cam-win[hidden]{display:none}
 .cam-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;height:28px;padding:0 6px 0 12px;cursor:move;touch-action:none;user-select:none}
 .cam-bar:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
-.cam-bar .k{font-size:11px}
+.cam-bar .k{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cam-g{color:var(--acc)}
 .cam-sz{width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:15px;line-height:1;cursor:pointer}
 .cam-sz:hover{background:rgba(241,240,226,.16)}
 .cam-box{position:relative;width:100%;aspect-ratio:4/3;background:#05070B}

@@ -43,6 +43,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     RP: { act: null, t: 0, q: 0 }, fitAct: null, fitEnd: null,
     // sync = the action whose scripted rep the replay view is phase-locking to the person's live angle, or null
     sync: null, syncT: 0,
+    handG: '',                                          // recognised hand gestures for the camera window: 'L:握拳|R:比 V' (figure side : Chinese label)
     run: playing, rate: 1,                              // what the counters and estimates follow: demo playback, or live tracking
     uiTick: true, uiT: 0, facing: { key: '正面', deg: 0 }, met: ACT.squat.met, real: null,
     mu: createMuscles(), rows: [], recovery: 0, load: createLoad(), M: createMetrics(), bio: createBio(), therm: createTherm(),
@@ -112,6 +113,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     if (ACT[S.action].rep.type === 'none') S.stateZh = ACT[S.action].rep.label;
   }
   function setCamView(v) { S.camView = v === 'replay' ? 'replay' : 'live'; S.blendFrom = S.curQ; S.blendT = 0; }
+  /** hand tracking (面板 → 手部识别) on / off */
+  function setHands(on) { camera.setHands(on); if (!on) S.handG = ''; }
   /** camera following: One Euro minCut / beta and prediction lead (ms); fields left out or invalid keep their value
    * @param {Partial<import('../pose/camTune.js').CamTune>} p */
   function setCamTune(p) { Object.assign(camera.pose.tune, sanitizeTune(p, camera.pose.tune)); }
@@ -174,7 +177,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     let sol;
     if (S.camLive && !replay) {
       ground.k = 1 - Math.exp(-dt * 20);
-      sol = camSolve(camera.pose, !!S.fitAct && HAS_PROP[S.fitAct], camPredict(camera.pose, now, lead()));   // dumbbells only while a dumbbell exercise is being counted
+      sol = camSolve(camera.pose, !!S.fitAct && HAS_PROP[S.fitAct], camPredict(camera.pose, now, lead()), now);   // dumbbells only while a dumbbell exercise is being counted
     } else if (S.sync) {
       const A2 = ACT[S.sync], ang = bothSides(camPredict(camera.pose, now, lead()), A2.show);   // the person's raw joint angle (both sides)
       S.syncT += (phaseAt(tab, ang) - S.syncT) * (1 - Math.exp(-dt * 30));
@@ -197,6 +200,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
       sol = solve(q);
     }
     S.sol = sol;
+    if (S.uiTick) { const H = camera.pose.hands; S.handG = S.camOn ? ['L', 'R'].filter(n => H[n].gesture).map(n => n + ':' + H[n].gesture).join('|') : ''; }
     const { P, D } = sol;
     // camera + the camera team's rules: their events do the counting (fitEvents); the old per-action camera rules
     // still count the actions they do not cover (walk, lunge, …) in the live view
@@ -238,7 +242,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   }
 
   return {
-    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune,
+    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands,
     /** console tuning shortcut: prediction lead in ms */
     setCamLead(ms) { setCamTune({ lead: Number(ms) }); },
     /** the camera preview's video element and 2D check canvas */

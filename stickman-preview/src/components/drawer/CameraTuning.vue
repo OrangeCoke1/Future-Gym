@@ -23,6 +23,7 @@ const SLIDERS = [
 
 /** @param {Partial<import('../../pose/camTune.js').CamTune> | null} p  null = defaults */
 function apply(p) { settings.setCamTune(p); engine.setCamTune(tune); }
+function setHands(on) { settings.camHands = on; engine.setHands(on); }
 const preset = computed(() => {
   const hit = CAM_TUNE_PRESETS.find(([, v]) => v.minCut === tune.minCut && v.beta === tune.beta && v.lead === tune.lead);
   return hit ? hit[0] : null;
@@ -59,6 +60,27 @@ const show = (k, v) => (k === 'minCut' ? v.toFixed(1) : String(Math.round(v * 10
         {{ t('恢复默认') }}
       </button>
     </div>
+    <div class="row">
+      <span class="note">{{ t('手部识别') }}</span>
+      <div
+        class="seg"
+        role="group"
+        :aria-label="t('手部识别')"
+      >
+        <button
+          v-for="[v, name] in [[true, '开'], [false, '关']]"
+          :key="name"
+          type="button"
+          :aria-pressed="String(settings.camHands === v)"
+          @click="setHands(v)"
+        >
+          {{ t(name) }}
+        </button>
+      </div>
+    </div>
+    <p class="note">
+      {{ t('识别每根手指，小人的手会跟着握拳、张开和转动手腕；离摄像头近一些更准，会多占一些性能') }}
+    </p>
     <div class="row">
       <span class="note">{{ t('腿部') }}</span>
       <div

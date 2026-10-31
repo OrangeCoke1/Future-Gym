@@ -111,7 +111,7 @@ export function createBodyModel({ scene, U, poser, particles }) {
     const fistOf = makeFist(rig), PB = particles.body;
     SM.fist = fistOf(rest, N0); PB.fist = fistOf(PB.rest, null, k => !PB.ves[k]);
   }
-  /** g = grip amount of the hands (0 open – 1 fist) */
+  /** g = grip amount of the hands (0 open – 1 fist), one number or per hand { L, R } */
   function skinMesh(P, D, g) {
     applyFist(SM.fist, SM.rest, SM.nrest, g); poser.setGirdle(SM.gw);
     poser.poseBones(SM.rig, P, D); const { rest, nrest, b1, b2, w2, pv, th, pos, nrm } = SM;
