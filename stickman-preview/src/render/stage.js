@@ -78,7 +78,7 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
   shadowMesh.rotation.x = -Math.PI / 2; shadowMesh.position.y = 0.001; shadowMesh.renderOrder = -1; scene.add(shadowMesh);
 
   // the particle figure flies together out of a swirling cloud on entering the particle view (uForm 0 → 1)
-  let gripK = 0, gripT = 0, formT0 = 0, formDur = 1;
+  const gripK = { L: 0, R: 0 }; let gripT = 0, formT0 = 0, formDur = 1;
   const white = col('#ffffff'), _c1 = new THREE.Color();
   function color(hex) {              // dark bodies get a lighter lit side, light bodies a darker shaded side
     const c = col(hex), dark = c.r + c.g + c.b < 1.2;
@@ -123,7 +123,8 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
     PU.uVein.value.set('#4C46C8').lerp(_c1.set('#A04C86'), clamp((smo2 - 35) / 36, 0, 1));
     poser.clearPosed();
     const gdt = Math.min(0.1, Math.max(0, (now - gripT) / 1000)); gripT = now;   // hands close around the dumbbells over ~0.2 s
-    gripK += ((sol && sol.prop ? 1 : 0) - gripK) * (1 - Math.exp(-gdt / 0.08));
+    // each hand: closed around a dumbbell, or as closed as the tracked hand (camera hand tracking)
+    for (const n of ['L', 'R']) gripK[n] += (Math.max(sol && sol.prop ? 1 : 0, (sol && sol.grip && sol.grip[n]) || 0) - gripK[n]) * (1 - Math.exp(-gdt / 0.08));
     if (sol && holoOn) particles.skin(sol.P, sol.D, (now / 1000) % 1000, 0.25 + hr / 60 * 0.2, gripK);
     else if (sol && model.loaded) model.skin(sol.P, sol.D, gripK);
     if (sol && moireOn) moire.place(sol.P, sol.D);

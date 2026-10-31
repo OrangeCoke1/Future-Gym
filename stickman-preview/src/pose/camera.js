@@ -4,6 +4,7 @@ import { V, add, sub, mul, dot, cross, len, nrm, TAU, UP, DOWN, BACK, C } from '
 import { B, base, solve, settleGround } from '../core/skeleton.js';
 import { ACT } from '../core/actions.js';
 import { CAM_TUNE_DEFAULT } from './camTune.js';
+import { createHands, rollAxis, handLive } from './hands.js';
 
 const LM = { ear: 7, sh: 11, el: 13, wr: 15, hip: 23, kn: 25, an: 27, heel: 29, toe: 31 };   // left-side index; right side = +1
 const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
@@ -41,14 +42,14 @@ const V_REST = 0.15, V_FULL = 0.35;   // m/s: below V_REST the joint counts as s
 
 /** @typedef {import('../core/math.js').Vec3} Vec3 */
 /** @typedef {{ J: Record<string, Vec3>, Vl: Record<string, Vec3>, Tj: Record<string, number>, Vis: Record<string, number>,
- *   F: Record<string, Function[]>, tune: import('./camTune.js').CamTune, up: Vec3 | null, side: Vec3 | null, face: Vec3 | null,
+ *   F: Record<string, Function[]>, hands: ReturnType<typeof createHands>, tune: import('./camTune.js').CamTune, up: Vec3 | null, side: Vec3 | null, face: Vec3 | null,
  *   tPrev: number, seen: number, motion: number, fpsN: number, lm2d: object[] | null }} CamPose
  *   J = filtered joints (hip-centred), Vl = their velocities (m/s), Tj = when each joint was last updated (s),
  *   Vis = smoothed visibility (0..1, the joint's confidence), up / side = smoothed body frame, face = side with a dead-band,
  *   seen = last time both shoulders were visible (ms), motion = mean limb speed (m/s) */
 /** @returns {CamPose} */
 export const createCamPose = () => {
-  const c = { J: null, Vl: {}, Tj: {}, Vis: {}, F: {}, tune: { ...CAM_TUNE_DEFAULT }, up: null, side: null, face: null,
+  const c = { J: null, Vl: {}, Tj: {}, Vis: {}, F: {}, hands: createHands(), tune: { ...CAM_TUNE_DEFAULT }, up: null, side: null, face: null,
     tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null };
   camSeed(c); return c;
 };
@@ -192,8 +193,8 @@ function footDir(cam, J, n, bodyF, fb) {
  * @param {Record<string, Vec3>} [J] joints to use (default: the filtered ones)
  * @returns {import('../core/skeleton.js').Solved}
  */
-export function camSolve(cam, prop, J = cam.J) {
-  const P = {}, D = {};
+export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
+  const P = {}, D = {}, grip = { L: 0, R: 0 };
   const dir = (a, b, fb) => { const d = sub(b, a); return len(d) > 1e-4 ? nrm(d) : fb; };
   const perp = (v, n, fb) => { const p = sub(v, mul(n, dot(v, n))); return len(p) > 1e-3 ? nrm(p) : fb; };
   const shJ = mul(add(J.shL, J.shR), 0.5);
@@ -207,7 +208,10 @@ export function camSolve(cam, prop, J = cam.J) {
     const u = dir(J['sh' + n], J['el' + n], DOWN), lo = dir(J['el' + n], J['wr' + n], u);
     const el = add(sh, mul(u, B.ua)), wr = add(el, mul(lo, B.fa));
     P['sh' + n] = sh; P['el' + n] = el; P['wr' + n] = wr;
-    P['hand' + n] = add(wr, mul(lo, 0.1)); P['thumb' + n] = add(P['hand' + n], mul(perp(bodyF, lo, up), 0.055));
+    // wrist roll: the tracked palm axis (hand tracking on and the hand just seen), else the body's facing
+    const hs = cam.hands[n], ax = rollAxis(hs, lo, now);
+    P['hand' + n] = add(wr, mul(lo, 0.1)); P['thumb' + n] = add(P['hand' + n], mul(ax || perp(bodyF, lo, up), 0.055));
+    if (handLive(hs, now)) grip[n] = hs.grip;
     const { tu, sl } = legDirs(J, n, s, up, side, bodyF, legConf(cam, n));
     const hip = mul(hipAx, s * B.hipW), kn = add(hip, mul(tu, B.thigh)), an = add(kn, mul(sl, B.shin));
     P['hip' + n] = hip; P['kn' + n] = kn; P['an' + n] = an;
@@ -222,7 +226,7 @@ export function camSolve(cam, prop, J = cam.J) {
   const minB = Math.min(P.heelL.y, P.toeL.y, P.heelR.y, P.toeR.y) - B.footR;      // world landmarks are hip-centred: stand the figure on the floor
   const lift = V(0, -settleGround(minB), 0);
   for (const k in P) P[k] = add(P[k], lift);
-  return { P, D, prop: !!prop, jump: 0 };
+  return { P, D, prop: !!prop, grip, jump: 0 };
 }
 
 /** small 2D check view: ivory / orange = confident, grey = low visibility (held) */

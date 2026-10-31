@@ -13,7 +13,7 @@ export function provideEngine({ profile, opts, camView }) {
   const S = engine.S;
   const pick = { action: () => S.action, playing: () => S.playing, speed: () => S.speed, count: () => S.count, stateZh: () => S.stateZh,
     mode: () => S.mode, dark: () => S.dark, camOn: () => S.camOn, real: () => S.real != null, setsN: () => S.sets.length,
-    camView: () => S.camView, mirror: () => S.mirror, camStat: () => S.camStat, camAspect: () => S.camAspect };
+    camView: () => S.camView, mirror: () => S.mirror, camStat: () => S.camStat, camAspect: () => S.camAspect, handG: () => S.handG };
   const live = shallowReactive(Object.fromEntries(Object.entries(pick).map(([k, f]) => [k, f()])));
   const sync = () => { for (const k in pick) { const v = pick[k](); if (live[k] !== v) live[k] = v; } };
   engine.onFrame(sync);

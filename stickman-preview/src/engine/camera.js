@@ -2,6 +2,7 @@
 // app, every new camera frame is processed as it arrives (requestVideoFrameCallback), independent of the render loop,
 // so a slow frame on screen never drops a frame from the rules; browsers without it fall back to tick() in the loop.
 import { createCamPose, camSeed, camIngest, camDraw, loadLandmarker } from '../pose/camera.js';
+import { ingestHands, drawHands, resetHands, loadHandLandmarker } from '../pose/hands.js';
 
 /**
  * @param {{ onResult: (res: object, now: number) => void, onStatus: (text: string, ...a: unknown[]) => void, onShow: (aspect: string | null) => void, onFail: () => void }} o
@@ -12,13 +13,22 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
   const cam = createCamPose();
   let lm = null, loading = null, stream = null, tk = 0, rvfc = false, vt = -1, lastTs = 0, fps = 0, fpsT = 0, mirror = true;
   let video = null, g = null, framing = () => 'NO_PERSON';
+  // hands (面板 → 手部识别): a second landmarker on the same frames, loaded the first time it is switched on
+  let handsOn = false, hlm = null, hLoading = null;
 
   function frame() {
     if (!lm || !stream || video.readyState < 2) return;
     const now = Math.max(performance.now(), lastTs + 0.01); lastTs = now;   // detectForVideo needs strictly rising time
     let res = null;
     try { res = lm.detectForVideo(video, now); } catch (e) { console.error(e); }
-    if (res) { camIngest(cam, res, now, mirror); if (g) camDraw(g, cam.lm2d); onResult(res, now); }
+    if (res) camIngest(cam, res, now, mirror);
+    if (handsOn && hlm) {
+      let hr = null;
+      try { hr = hlm.detectForVideo(video, now); } catch (e) { console.error(e); }
+      if (hr) ingestHands(cam.hands, hr, cam.lm2d, now, mirror);
+    }
+    if (g && res) { camDraw(g, cam.lm2d); if (handsOn) drawHands(g, cam.hands); }
+    if (res) onResult(res, now);
   }
   function watch(t) {
     if (!video.requestVideoFrameCallback) return;
@@ -30,7 +40,9 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
     camSeed(cam); onStatus('请允许使用摄像头…');
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('insecure');
-      const s = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
+      // fingers are small with the whole body in view: ask for 720p while hand tracking is on
+      const size = handsOn ? { width: { ideal: 1280 }, height: { ideal: 720 } } : { width: { ideal: 640 }, height: { ideal: 480 } };
+      const s = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', ...size } });
       if (stale()) { s.getTracks().forEach(tr => tr.stop()); return; }
       stream = s; video.srcObject = s; await video.play();
       const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
@@ -40,6 +52,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
         onStatus('正在加载识别模型…');
         try { lm = await (loading || (loading = loadLandmarker())); } catch (e) { loading = null; throw e; }
       }
+      if (handsOn) loadHands();
       if (!stale()) { onStatus('未检测到人体 · 请让全身入镜'); watch(t); }
     } catch (e) {
       if (stale()) return;
@@ -51,6 +64,19 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
         : '摄像头或识别模型启动失败';
       onFail(); onStatus(msg);
     }
+  }
+  function loadHands() {
+    if (hlm || hLoading) return;
+    hLoading = loadHandLandmarker().then(x => { hlm = x; }, e => { console.error(e); onStatus('手部识别模型加载失败'); }).finally(() => { hLoading = null; });
+  }
+  /** hand tracking on / off; a running camera restarts so it can switch resolution */
+  function setHands(on) {
+    on = !!on;
+    if (on === handsOn) return;
+    handsOn = on; resetHands(cam.hands);
+    if (!stream) return;
+    stream.getTracks().forEach(tr => tr.stop()); stream = null; rvfc = false;
+    start();
   }
   function stop() {
     tk++; cam.lm2d = null; rvfc = false;
@@ -68,7 +94,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
     return now - cam.seen < 600;
   }
   return {
-    pose: cam, start, stop, tick,
+    pose: cam, start, stop, tick, setHands,
     /** the preview's video element and its 2D check canvas */
     attach(v, c) { video = v; g = c.getContext('2d'); },
     /** where the recognition's framing state comes from (FIT), for the status line */
