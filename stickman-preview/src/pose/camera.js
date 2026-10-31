@@ -31,6 +31,13 @@ const VIS_T = 0.2;          // s, smoothing of each joint's visibility (its conf
 const FRAME_CUT = 4;        // Hz, smoothing of the body frame (up / side)
 const FACE_DEAD = 1.5 * Math.PI / 180;   // rad, facing changes smaller than this are ignored (no rocking while standing)
 const clamp01 = x => Math.min(1, Math.max(0, x));
+// levelling: a camera that is tilted (a laptop looking up, a phone on its side) makes the whole person lean in the
+// world landmarks. The person's own vertical is measured while they stand straight (ankles → shoulders, legs straight)
+// or, with the legs out of view, from the trunk while they hold still; its slow average is the camera's tilt, and
+// camSolve() turns the whole pose so that vertical is straight up. Bending (squats, lunges) is never measured.
+const LEVEL_T = 1.5;                          // s, time constant of the tilt estimate
+const LEVEL_MAX = Math.cos(35 * Math.PI / 180);   // a "vertical" further than this from straight up is a real lean, not tilt
+const LEG_STRAIGHT = Math.cos(25 * Math.PI / 180);
 // 2D / 3D fusion: the world landmarks' x / y are a regressed 3D guess that often sits a few degrees off the person in
 // the picture, while the image landmarks line up with the pixels. So x / y come mostly from the image (scaled to
 // metres by the torso), and only depth z from the world landmarks.
@@ -56,7 +63,7 @@ const V_REST = 0.15, V_FULL = 0.35;   // m/s: below V_REST the joint counts as s
 /** @returns {CamPose} */
 export const createCamPose = () => {
   const c = { J: null, Vl: {}, Tj: {}, Vis: {}, F: {}, hands: createHands(), tune: { ...CAM_TUNE_DEFAULT }, up: null, side: null, face: null,
-    tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null, aspect: 4 / 3, s2d: 0 };
+    tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null, aspect: 4 / 3, s2d: 0, vert: null };
   camSeed(c); return c;
 };
 
@@ -68,7 +75,7 @@ export function camSeed(cam) {
     J['ear' + s] = add(r('head'), V(s === 'L' ? 0.1 : -0.1, 0, 0));
   }
   J.nose = add(r('head'), V(0, -0.02, 0.17));
-  cam.J = J; cam.Vl = {}; cam.Tj = {}; cam.Vis = {}; cam.F = {}; cam.up = cam.side = cam.face = null; cam.motion = 0; cam.seen = -1e9; cam.s2d = 0;
+  cam.J = J; cam.Vl = {}; cam.Tj = {}; cam.Vis = {}; cam.F = {}; cam.up = cam.side = cam.face = null; cam.motion = 0; cam.seen = -1e9; cam.s2d = 0; cam.vert = null;
 }
 
 /**
@@ -143,6 +150,7 @@ function updateFrame(cam, dt) {
   const J = cam.J, pel = mul(add(J.hipL, J.hipR), 0.5), sh = mul(add(J.shL, J.shR), 0.5);
   const d = sub(sh, pel), up = len(d) > 1e-4 ? nrm(d) : UP;
   const sd = sub(J.shL, J.shR), sp = sub(sd, mul(up, dot(sd, up))), side = len(sp) > 1e-3 ? nrm(sp) : V(1, 0, 0);
+  measureVertical(cam, dt);
   if (!cam.up || !dt) { cam.up = up; cam.side = side; cam.face = side; return; }
   const a = 1 - Math.exp(-TAU * FRAME_CUT * dt);
   cam.up = nrm(add(cam.up, mul(sub(up, cam.up), a)));
@@ -153,6 +161,35 @@ function updateFrame(cam, dt) {
     cam.face = nrm(add(cam.face, mul(sub(cam.side, cam.face), k)));
   }
 }
+
+/** the person's vertical (see LEVEL_T), low-passed into cam.vert; nothing while they bend */
+function measureVertical(cam, dt) {
+  const J = cam.J, V_ = cam.Vis, ok = k => (V_[k] ?? 0) >= 0.7;
+  const sh = mul(add(J.shL, J.shR), 0.5);
+  let v = null;
+  if (['hip', 'kn', 'an'].every(k => ok(k + 'L') && ok(k + 'R'))) {
+    const straight = n => dot(nrm(sub(J['kn' + n], J['hip' + n])), nrm(sub(J['an' + n], J['kn' + n]))) > LEG_STRAIGHT;
+    if (straight('L') && straight('R')) v = sub(sh, mul(add(J.anL, J.anR), 0.5));
+  } else if (!['kn', 'an'].some(k => ok(k + 'L') || ok(k + 'R')) && ok('shL') && ok('shR') && ok('hipL') && ok('hipR') && cam.motion < 0.3) {
+    v = sub(sh, mul(add(J.hipL, J.hipR), 0.5));               // legs out of view: the trunk, while holding still
+  }
+  if (!v || len(v) < 0.2) return;
+  v = nrm(v);
+  if (v.y < LEVEL_MAX) return;
+  if (!cam.vert || !dt) { cam.vert = v; return; }
+  cam.vert = nrm(add(cam.vert, mul(sub(v, cam.vert), 1 - Math.exp(-dt / LEVEL_T))));
+}
+
+/** rotation taking the measured vertical to straight up (null = none), applied with levelOf(L, p) */
+function levelRot(cam) {
+  const v = cam.vert; if (!v) return null;
+  const ax = cross(v, UP), s = len(ax), c = dot(v, UP);
+  return s < 1e-4 ? null : { k: mul(ax, 1 / s), s, c };
+}
+const levelOf = (L, p) => {                                    // Rodrigues
+  const { k, s, c } = L, kx = cross(k, p);
+  return add(add(mul(p, c), mul(kx, s)), mul(k, dot(k, p) * (1 - c)));
+};
 
 /**
  * the filtered joints carried forward to `now` + lead (s); joints that are stale or have no velocity yet stay put
@@ -232,12 +269,15 @@ function footDir(cam, J, n, bodyF, fb) {
  */
 export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
   const P = {}, D = {}, grip = { L: 0, R: 0 }, fingers = { L: null, R: null };
+  const L = levelRot(cam);                                     // stand the person up straight (camera tilt removed)
+  if (L) { const J2 = {}; for (const k in J) J2[k] = levelOf(L, J[k]); J = J2; }
+  const camUp = cam.up && L ? levelOf(L, cam.up) : cam.up, camFace = cam.face && L ? levelOf(L, cam.face) : cam.face;
   const dir = (a, b, fb) => { const d = sub(b, a); return len(d) > 1e-4 ? nrm(d) : fb; };
   const perp = (v, n, fb) => { const p = sub(v, mul(n, dot(v, n))); return len(p) > 1e-3 ? nrm(p) : fb; };
   const shJ = mul(add(J.shL, J.shR), 0.5);
   // body frame: the smoothed one from camIngest (facing with a dead-band), or straight from the joints before the first frame
   const pelJ = mul(add(J.hipL, J.hipR), 0.5);
-  const up = cam.up || dir(pelJ, shJ, UP), side = perp(cam.face || sub(J.shL, J.shR), up, V(1, 0, 0)), bodyF = cross(side, up);
+  const up = camUp || dir(pelJ, shJ, UP), side = perp(camFace || sub(J.shL, J.shR), up, V(1, 0, 0)), bodyF = cross(side, up);
   const hipAx = perp(dir(J.hipR, J.hipL, side), up, side);
   P.pel = V(0, 0, 0); P.pelBot = mul(up, 0.02); P.chest = mul(up, B.torso);
   for (const [n, s] of [['L', 1], ['R', -1]]) {

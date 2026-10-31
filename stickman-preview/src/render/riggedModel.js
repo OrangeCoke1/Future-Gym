@@ -88,7 +88,7 @@ export function createRiggedModel({ scene, meshMat, lineMat, particles, PU }) {
       const axisT1 = along.clone().multiplyScalar(s), axisT = new THREE.Vector3().crossVectors(tdir, palm).normalize();
       const len = jm != null ? Rv(jm).distanceTo(Rv(j)) : 0.08;
       const grip = Rv(j).addScaledVector(along, len * 0.55).addScaledVector(palm, len * 0.3);
-      hand[n] = { j, frT, axisF, axisT1, axisT, grip, across };
+      hand[n] = { j, frT, axisF, axisT1, axisT, grip, across, along };
     }
     // sole points at rest (heel under the ankle, ball, toe tip), each with the bone that carries it
     let floor = 1e9; for (let i = 0; i < n; i++) floor = Math.min(floor, rest[i * 3 + 1]);
@@ -163,7 +163,7 @@ export function createRiggedModel({ scene, meshMat, lineMat, particles, PU }) {
   }
 
   // ---- per frame: bone rotations from the skeleton ----
-  const _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
+  const _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
   const qPel = new THREE.Quaternion(), qChe = new THREE.Quaternion(), qHead = new THREE.Quaternion();
   const T = (o, p) => o.set(p.x, p.y, p.z);
   function basisQ(q, up, fw) {
@@ -209,9 +209,21 @@ export function createRiggedModel({ scene, meshMat, lineMat, particles, PU }) {
         const al = _a.set(hd.x - wr.x, hd.y - wr.y, hd.z - wr.z);
         if (al.lengthSq() < 1e-10 || !th) { Q[j].copy(Q[pj]); continue; }
         al.normalize();
-        const ac = _b.set(th.x - hd.x, th.y - hd.y, th.z - hd.z); ac.addScaledVector(al, -ac.dot(al));
-        if (ac.lengthSq() < 1e-10) { Q[j].copy(Q[pj]); continue; }
-        ac.normalize();
+        // The thumb side from P.thumb is only defined while it stands off the wrist → palm line; at about 90° of elbow
+        // bend (a curl) the two line up and then cross, which would whip the hand round. So it is blended towards the
+        // hand frame carried over from the forearm by the shortest turn, by how far the thumb stands off (sine of the
+        // angle), and kept on the side it had in the last frame.
+        _d.copy(h.along).applyQuaternion(Q[pj]); _q.setFromUnitVectors(_d, al);
+        _e.copy(h.across).applyQuaternion(Q[pj]).applyQuaternion(_q);              // carried thumb side
+        const ac = _b.set(th.x - hd.x, th.y - hd.y, th.z - hd.z), tl = ac.length();
+        ac.addScaledVector(al, -ac.dot(al));
+        const w = tl > 1e-6 ? Math.min(1, Math.max(0, (ac.length() / tl - 0.25) / 0.35)) : 0;
+        if (w > 0) ac.normalize();
+        if (ac.dot(h.last || _e) < 0) ac.negate();  // past 90° of elbow bend the thumb's off-line part flips: keep it on last frame's side
+        ac.multiplyScalar(w).addScaledVector(_e, 1 - w * w);
+        ac.addScaledVector(al, -ac.dot(al));
+        if (ac.lengthSq() < 1e-10) ac.copy(_e);
+        ac.normalize(); (h.last || (h.last = new THREE.Vector3())).copy(ac);
         const pa = _c.crossVectors(al, ac).multiplyScalar(r.n === 'L' ? 1 : -1);
         _m2.makeBasis(al, ac, pa).multiply(h.frT); Q[j].setFromRotationMatrix(_m2);
       } else if (r.role === 'finger') {
