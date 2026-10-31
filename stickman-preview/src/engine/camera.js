@@ -15,6 +15,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
   let video = null, g = null, framing = () => 'NO_PERSON';
   // hands (面板 → 手部识别): a second landmarker on the same frames, loaded the first time it is switched on
   let handsOn = false, hlm = null, hLoading = null;
+  let model = 'heavy', lmModel = null;           // pose model (面板 → 识别精度); a switch reloads it
 
   function frame() {
     if (!lm || !stream || video.readyState < 2) return;
@@ -47,11 +48,9 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
       stream = s; video.srcObject = s; await video.play();
       const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
       if (g) { g.canvas.width = 640; g.canvas.height = Math.round(640 * vh / vw); }
+      cam.aspect = vw / vh;
       onShow(vw + ' / ' + vh);
-      if (!lm) {
-        onStatus('正在加载识别模型…');
-        try { lm = await (loading || (loading = loadLandmarker())); } catch (e) { loading = null; throw e; }
-      }
+      if (!lm || lmModel !== model) { await loadPose(); if (stale()) return; }
       if (handsOn) loadHands();
       if (!stale()) { onStatus('未检测到人体 · 请让全身入镜'); watch(t); }
     } catch (e) {
@@ -64,6 +63,27 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
         : '摄像头或识别模型启动失败';
       onFail(); onStatus(msg);
     }
+  }
+  /** load the pose model until the loaded one is the chosen one (it may be switched while loading) */
+  async function loadPose() {
+    while (!lm || lmModel !== model) {
+      onStatus('正在加载识别模型…');
+      if (!loading) { const m = model; loading = loadLandmarker(m).then(x => ({ x, m })).finally(() => { loading = null; }); }
+      const { x, m } = await loading;
+      if (lm !== x) { if (lm) lm.close(); lm = x; lmModel = m; }
+    }
+  }
+  /** 'full' | 'heavy'; a running camera keeps going and picks the new model up once it has loaded */
+  function setModel(m) {
+    m = m === 'full' ? 'full' : 'heavy';
+    if (m === model) return;
+    model = m;
+    if (lm) { lm.close(); lm = null; }
+    if (loading) return;                                  // the running loadPose() loads the new one next
+    if (!stream) return;
+    const t = tk;
+    loadPose().then(() => { if (t === tk && stream) onStatus('未检测到人体 · 请让全身入镜'); },
+      e => { console.error(e); onStatus('摄像头或识别模型启动失败'); });
   }
   function loadHands() {
     if (hlm || hLoading) return;
@@ -94,7 +114,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
     return now - cam.seen < 600;
   }
   return {
-    pose: cam, start, stop, tick, setHands,
+    pose: cam, start, stop, tick, setHands, setModel,
     /** the preview's video element and its 2D check canvas */
     attach(v, c) { video = v; g = c.getContext('2d'); },
     /** where the recognition's framing state comes from (FIT), for the status line */

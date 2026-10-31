@@ -44,6 +44,9 @@ export const useSettings = defineStore('settings', () => {
   /** hand tracking in camera mode (面板 → 摄像头跟随 → 手部识别), persisted, off by default */
   const camHands = ref(load('stick.camHands', v => v === true));
   watch(camHands, v => save('stick.camHands', v));
+  /** pose model (面板 → 识别精度): 'heavy' = 高精度, 'full' = 标准 */
+  const camModel = ref(load('stick.camModel', v => (v === 'full' || v === 'heavy' ? v : undefined)) || 'heavy');
+  watch(camModel, v => save('stick.camModel', v));
   /** camera following (面板 → 摄像头跟随), persisted @type {import('../pose/camTune.js').CamTune} */
   const camTune = reactive(load('stick.camTune', loadTune));
   /** @param {Partial<import('../pose/camTune.js').CamTune> | null} p  null = back to defaults */
@@ -52,5 +55,5 @@ export const useSettings = defineStore('settings', () => {
     layout.cl = layout.cr = 0; layout.g = {}; saveLayout();
     Object.assign(camWin, sanitizeCamWin(null)); saveCamWin();
   }
-  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune, camHands };
+  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune, camHands, camModel };
 });

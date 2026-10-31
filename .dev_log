@@ -93,3 +93,7 @@
 ## [2026-10-31 16:45] 手部识别（手指），面板开关，绑定到 3D 小人
 - **Goal**: 识别更细致的动作（手指），在面板加开关，并让小人的手跟着动
 - **Changes**: 新增 `public/mediapipe/hand_landmarker.task`（float16 v1）；新增 `src/pose/hands.js`（加载 Hand Landmarker、按姿态手腕把检测到的手分到左右并按镜像映射、握拳程度 gripOf、手掌横轴用于手腕转动、手势 握拳 / 张开 / 比 V / 点赞 / 指、在摄像头浮窗画 21 点手指骨架）；`engine/camera.js`：开关时懒加载模型、同帧检测、开启时摄像头请求 1280×720 并在切换时重启；`pose/camera.js`：`camSolve` 用手掌横轴决定拇指点（手腕转动）并输出 `sol.grip`；`render/hand.js`：`applyFist` 支持左右手分别握拳；`render/stage.js`：每只手的握拳 = max(哑铃, 识别到的握拳)；`engine/engine.js`：`setHands`、`S.handG`（手势文字）；`useEngine.js` 暴露 `handG`；`CamPreview.vue` 标题栏显示手势；`stores/settings.js` 新增 `camHands`（`stick.camHands`，默认关）；`CameraTuning.vue` 手部识别开关与说明；`App.vue` 启动时应用；`i18n/messages.js` 日英翻译；`CLAUDE.md` 同步。lint、build 通过；Node 测试握拳 / 张开 / 比 V / 指 / 点赞与镜像分手；无头 Chromium 验证开关、720p 切换、手部模型加载、无报错
+
+## [2026-10-31 16:50] Body tracking misalignment: high-accuracy model + 2D/3D fusion
+- **Goal**: The figure's limbs were misaligned with the person ("错位"). Use MediaPipe's heavy pose model and take limb x / y from the image landmarks instead of the regressed world landmarks.
+- **Changes**: `public/mediapipe/pose_landmarker_heavy.task` (new); `src/pose/camera.js` (`fuse2d`, `POSE_MODELS`, `loadLandmarker(model)`, `cam.aspect` / `cam.s2d`); `src/engine/camera.js` (`loadPose`, `setModel`); `src/engine/engine.js` (`setPoseModel`); `src/stores/settings.js` (`camModel`, `stick.camModel`); `src/components/drawer/CameraTuning.vue` (识别精度 高精度 / 标准); `src/App.vue`; `src/i18n/messages.js`; `CLAUDE.md`.

@@ -31,6 +31,12 @@ const VIS_T = 0.2;          // s, smoothing of each joint's visibility (its conf
 const FRAME_CUT = 4;        // Hz, smoothing of the body frame (up / side)
 const FACE_DEAD = 1.5 * Math.PI / 180;   // rad, facing changes smaller than this are ignored (no rocking while standing)
 const clamp01 = x => Math.min(1, Math.max(0, x));
+// 2D / 3D fusion: the world landmarks' x / y are a regressed 3D guess that often sits a few degrees off the person in
+// the picture, while the image landmarks line up with the pixels. So x / y come mostly from the image (scaled to
+// metres by the torso), and only depth z from the world landmarks.
+const FUSE_2D = 0.8;        // share of the image landmarks in x / y
+const SCALE_A = 0.15;       // per-frame smoothing of the image → metres scale
+const TORSO = [[11, 12], [23, 24]];
 
 // prediction: each joint's velocity (from the filtered positions) carries it forward to the moment it is drawn plus
 // a small lead, which hides most of the camera + model delay. Bounded, so a sudden stop overshoots only a little.
@@ -50,7 +56,7 @@ const V_REST = 0.15, V_FULL = 0.35;   // m/s: below V_REST the joint counts as s
 /** @returns {CamPose} */
 export const createCamPose = () => {
   const c = { J: null, Vl: {}, Tj: {}, Vis: {}, F: {}, hands: createHands(), tune: { ...CAM_TUNE_DEFAULT }, up: null, side: null, face: null,
-    tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null };
+    tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null, aspect: 4 / 3, s2d: 0 };
   camSeed(c); return c;
 };
 
@@ -62,14 +68,45 @@ export function camSeed(cam) {
     J['ear' + s] = add(r('head'), V(s === 'L' ? 0.1 : -0.1, 0, 0));
   }
   J.nose = add(r('head'), V(0, -0.02, 0.17));
-  cam.J = J; cam.Vl = {}; cam.Tj = {}; cam.Vis = {}; cam.F = {}; cam.up = cam.side = cam.face = null; cam.motion = 0; cam.seen = -1e9;
+  cam.J = J; cam.Vl = {}; cam.Tj = {}; cam.Vis = {}; cam.F = {}; cam.up = cam.side = cam.face = null; cam.motion = 0; cam.seen = -1e9; cam.s2d = 0;
+}
+
+/**
+ * world landmarks with x / y taken mostly from the image landmarks (see FUSE_2D); the world ones unchanged when the
+ * torso is not seen well enough to scale the image
+ * @param {CamPose} cam @param {object[]} wl world landmarks @param {object[] | null} l image landmarks (0..1)
+ * @returns {object[]}
+ */
+export function fuse2d(cam, wl, l) {
+  if (!l || l.length < 25) return wl;
+  const vis = p => (p.visibility == null ? 1 : p.visibility);
+  if ([11, 12, 23, 24].some(i => vis(l[i]) < 0.6)) return wl;
+  const ax = cam.aspect > 0 ? cam.aspect : 4 / 3;
+  const ix = i => l[i].x * ax, iy = i => l[i].y;
+  const mid = (f, a, b) => (f(a) + f(b)) / 2;
+  let lw = 0, li = 0;
+  const seg = (a, b, wa, wb) => { lw += Math.hypot(wa.x - wb.x, wa.y - wb.y); li += Math.hypot(a[0] - b[0], a[1] - b[1]); };
+  for (const [a, b] of TORSO) seg([ix(a), iy(a)], [ix(b), iy(b)], wl[a], wl[b]);
+  seg([mid(ix, 11, 12), mid(iy, 11, 12)], [mid(ix, 23, 24), mid(iy, 23, 24)],
+    { x: (wl[11].x + wl[12].x) / 2, y: (wl[11].y + wl[12].y) / 2 }, { x: (wl[23].x + wl[24].x) / 2, y: (wl[23].y + wl[24].y) / 2 });
+  if (!(li > 1e-4) || !(lw > 1e-3)) return wl;
+  const s = lw / li;
+  cam.s2d = cam.s2d > 0 ? cam.s2d + (s - cam.s2d) * SCALE_A : s;
+  const k = cam.s2d, cx = mid(ix, 23, 24), cy = mid(iy, 23, 24);
+  const wx = (wl[23].x + wl[24].x) / 2, wy = (wl[23].y + wl[24].y) / 2;          // world origin is about the hip midpoint
+  return wl.map((p, i) => ({
+    x: p.x + (wx + (ix(i) - cx) * k - p.x) * FUSE_2D,
+    y: p.y + (wy + (iy(i) - cy) * k - p.y) * FUSE_2D,
+    z: p.z, visibility: p.visibility
+  }));
 }
 
 /** one detection result into the filtered joints; mir = mirror view */
 export function camIngest(cam, res, now, mir) {
-  const wl = res.worldLandmarks && res.worldLandmarks[0];
+  const w0 = res.worldLandmarks && res.worldLandmarks[0];
   cam.lm2d = (res.landmarks && res.landmarks[0]) || null;
-  if (!wl) return;
+  if (!w0) return;
+  const wl = fuse2d(cam, w0, cam.lm2d);
   const t = now / 1000, dt = t - cam.tPrev, J = cam.J;
   const vis = i => wl[i].visibility == null ? 1 : wl[i].visibility;
   let mv = 0, mvN = 0;
@@ -247,12 +284,15 @@ export function camDraw(g, lm2d) {
   }
 }
 
-/** the Pose Landmarker (full model), GPU if possible; wasm and model are served from public/mediapipe/ */
-export async function loadLandmarker() {
+/** pose models in public/mediapipe/: heavy is more accurate (depth especially) and slower */
+export const POSE_MODELS = { full: 'pose_landmarker_full.task', heavy: 'pose_landmarker_heavy.task' };
+/** the Pose Landmarker, GPU if possible; wasm and model are served from public/mediapipe/
+ * @param {'full' | 'heavy'} [model] */
+export async function loadLandmarker(model = 'heavy') {
   const v = await import('@mediapipe/tasks-vision');
   const root = import.meta.env.BASE_URL + 'mediapipe/';
   const files = await v.FilesetResolver.forVisionTasks(root + 'wasm');
   const make = delegate => v.PoseLandmarker.createFromOptions(files, {
-    baseOptions: { modelAssetPath: root + 'pose_landmarker_full.task', delegate }, runningMode: 'VIDEO', numPoses: 1 });
+    baseOptions: { modelAssetPath: root + (POSE_MODELS[model] || POSE_MODELS.heavy), delegate }, runningMode: 'VIDEO', numPoses: 1 });
   try { return await make('GPU'); } catch { return await make('CPU'); }
 }

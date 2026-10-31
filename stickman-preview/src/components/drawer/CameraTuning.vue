@@ -7,6 +7,7 @@ import { useEngine } from '../../composables/useEngine.js';
 import { useSettings } from '../../stores/settings.js';
 import { CAM_TUNE_PRESETS, CAM_TUNE_RANGE } from '../../pose/camTune.js';
 
+const MODELS = [['heavy', '高精度'], ['full', '标准']];
 const LEGS = [['auto', '自动'], ['stand', '固定站姿']];
 
 const { t } = useI18n();
@@ -23,6 +24,7 @@ const SLIDERS = [
 
 /** @param {Partial<import('../../pose/camTune.js').CamTune> | null} p  null = defaults */
 function apply(p) { settings.setCamTune(p); engine.setCamTune(tune); }
+function setModel(m) { settings.camModel = m; engine.setPoseModel(m); }
 function setHands(on) { settings.camHands = on; engine.setHands(on); }
 const preset = computed(() => {
   const hit = CAM_TUNE_PRESETS.find(([, v]) => v.minCut === tune.minCut && v.beta === tune.beta && v.lead === tune.lead);
@@ -60,6 +62,27 @@ const show = (k, v) => (k === 'minCut' ? v.toFixed(1) : String(Math.round(v * 10
         {{ t('恢复默认') }}
       </button>
     </div>
+    <div class="row">
+      <span class="note">{{ t('识别精度') }}</span>
+      <div
+        class="seg"
+        role="group"
+        :aria-label="t('识别精度')"
+      >
+        <button
+          v-for="[m, name] in MODELS"
+          :key="m"
+          type="button"
+          :aria-pressed="String(settings.camModel === m)"
+          @click="setModel(m)"
+        >
+          {{ t(name) }}
+        </button>
+      </div>
+    </div>
+    <p class="note">
+      {{ settings.camModel === 'heavy' ? t('高精度模型，四肢位置更准，电脑较慢时帧率会降低') : t('标准模型，速度更快，四肢偶尔对不准') }}
+    </p>
     <div class="row">
       <span class="note">{{ t('手部识别') }}</span>
       <div
