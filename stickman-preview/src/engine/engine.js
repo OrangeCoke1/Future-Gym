@@ -14,7 +14,7 @@ import { createStage } from '../render/stage.js';
 import { drawOverlay } from '../render/overlay.js';
 import { ruleOf, showOf, angleOf, updateRep, bump } from './reps.js';
 import { createFit, fitKeyOf, isFitAction } from '../pose/fit.js';
-import { camSolve, camPredict } from '../pose/camera.js';
+import { camSolve, camPredict, HAS_PROP } from '../pose/camera.js';
 import { sanitizeTune } from '../pose/camTune.js';
 import { phaseTable, phaseAt, bothSides } from './phaseSync.js';
 import { createCamera } from './camera.js';
@@ -152,6 +152,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
       if (!replay) S.blendT = 1; else if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.4);
       // replay: play the recognised exercise for as many reps as the person has done (a bit faster when behind)
       if (replay && RP.act && RP.q > 0 && !S.sync) { const Pp = ACT[RP.act].P, s = Math.min(dt * (RP.q > 1.2 ? 1.8 : 1) / Pp, RP.q); RP.t += s * Pp; RP.q -= s; }
+      // the exercise has ended and every rep has been shown: back to standing (so no dumbbells left in the hands)
+      if (replay && RP.act && RP.q <= 0 && !S.fitAct && !S.sync) { S.blendFrom = S.curQ; S.blendT = 0; RP.act = null; RP.t = 0; }
     } else if (S.playing) { S.tAct += dt * S.speed; if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.6); }
     S.run = S.camOn ? (replay ? RP.q > 0 : S.camLive) : S.playing; S.rate = S.camOn ? 1 : S.speed;
     // camera mode: only credit the action's MET (and muscle effort) while the person is actually moving
@@ -164,7 +166,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     const sk = replay && S.camLive ? RP.act || S.action : null, tab = sk ? phaseTable(sk) : null;
     if ((tab ? sk : null) !== S.sync) {
       S.blendFrom = S.curQ; S.blendT = 0;
-      if (tab) S.syncT = phaseAt(tab, bothSides(camSolve(camera.pose, sk, camPredict(camera.pose, now, lead())).P, ACT[sk].show));
+      if (tab) S.syncT = phaseAt(tab, bothSides(camPredict(camera.pose, now, lead()), ACT[sk].show));
       else RP.t = 0;                                      // back to the queued replay: from the start of a rep, not mid-squat
       S.sync = tab ? sk : null;
     }
@@ -172,13 +174,14 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     let sol;
     if (S.camLive && !replay) {
       ground.k = 1 - Math.exp(-dt * 20);
-      sol = camSolve(camera.pose, S.action, camPredict(camera.pose, now, lead()));
+      sol = camSolve(camera.pose, !!S.fitAct && HAS_PROP[S.fitAct], camPredict(camera.pose, now, lead()));   // dumbbells only while a dumbbell exercise is being counted
     } else if (S.sync) {
-      const A2 = ACT[S.sync], ang = bothSides(camSolve(camera.pose, S.sync, camPredict(camera.pose, now, lead())).P, A2.show);
+      const A2 = ACT[S.sync], ang = bothSides(camPredict(camera.pose, now, lead()), A2.show);   // the person's raw joint angle (both sides)
       S.syncT += (phaseAt(tab, ang) - S.syncT) * (1 - Math.exp(-dt * 30));
       RP.q = 0;                                           // reps are being shown as they happen: nothing to catch up on
       if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.15);
       let q = A2.pose(S.syncT, A2.P);
+      if (S.fitAct !== S.sync) q.prop = 0;               // dumbbells only while that dumbbell exercise is being counted
       if (S.blendFrom && S.blendT < 1) q = lerpQ(S.blendFrom, q, easeIO(S.blendT));
       S.curQ = q;
       ground.k = 1 - Math.exp(-dt * 40);

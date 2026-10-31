@@ -1,8 +1,8 @@
-// Floating window inside a positioned parent: drag a handle to move it, drag the corner to resize it.
-// The window keeps its aspect ratio (height = width / aspect) and is clamped inside the parent.
+// Floating window: drag a handle to move it, drag the corner to resize it. The window keeps its aspect ratio
+// (height = width / aspect) and is clamped inside its bounds: the positioned parent, or the viewport (position: fixed).
 import { onMounted, onBeforeUnmount } from 'vue';
 
-/** @typedef {{ x: number, y: number, w: number }} FloatRect  left / top / width in px inside the parent; x < 0 = not placed yet */
+/** @typedef {{ x: number, y: number, w: number }} FloatRect  left / top / width in px inside the bounds; x < 0 = not placed yet */
 
 export const WIN_MIN = 160;
 export const WIN_SMALL = 240;
@@ -12,17 +12,19 @@ export const WIN_SMALL = 240;
  * @param {FloatRect} rect  reactive state, mutated in place
  * @param {() => number} aspect  width / height of the content
  * @param {() => void} commit  called after a move / resize ends (persist)
- * @param {(w: number, h: number) => FloatRect} place  default rect for a parent of size w × h
+ * @param {(w: number, h: number) => FloatRect} place  default rect for bounds of size w × h
+ * @param {{ viewport?: boolean }} [o]  viewport: bound by the browser window instead of the parent (the window is position: fixed)
  */
-export function useFloatWin(el, rect, aspect, commit, place) {
+export function useFloatWin(el, rect, aspect, commit, place, o = {}) {
   let op = null, ro = null;
   const box = () => {
+    if (o.viewport) return { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight };
     const p = el.value && el.value.parentElement;
     return p ? { w: p.clientWidth, h: p.clientHeight } : null;
   };
   const ar = () => { const a = Number(aspect()); return a > 0 ? a : 4 / 3; };
 
-  /** keep the window inside the parent */
+  /** keep the window inside its bounds */
   function clamp() {
     const b = box();
     if (!b || !b.w || !b.h || !el.value.offsetHeight) return;    // parent or window not laid out (hidden)
@@ -46,7 +48,7 @@ export function useFloatWin(el, rect, aspect, commit, place) {
   function move(e) {
     if (!op) return;
     const dx = e.clientX - op.px, dy = e.clientY - op.py;
-    if (op.kind === 'move') { rect.x = op.x + dx; rect.y = op.y + dy; }
+    if (op.kind === 'move') { rect.x = Math.max(0, op.x + dx); rect.y = Math.max(0, op.y + dy); }   // x < 0 would mean "not placed"
     else rect.w = op.w + Math.max(dx, dy * ar());              // corner: follow whichever axis moved more
     clamp();
   }
@@ -67,16 +69,16 @@ export function useFloatWin(el, rect, aspect, commit, place) {
     if (!d) return;
     e.preventDefault();
     const s = 16;
-    if (e.shiftKey) rect.w += (d[0] || -d[1]) * s; else { rect.x += d[0] * s; rect.y += d[1] * s; }
+    if (e.shiftKey) rect.w += (d[0] || -d[1]) * s; else { rect.x = Math.max(0, rect.x + d[0] * s); rect.y = Math.max(0, rect.y + d[1] * s); }
     clamp(); commit();
   }
 
   onMounted(() => {
-    const p = el.value && el.value.parentElement;
-    if (p) { ro = new ResizeObserver(clamp); ro.observe(p); }
+    if (o.viewport) addEventListener('resize', clamp);
+    else { const p = el.value && el.value.parentElement; if (p) { ro = new ResizeObserver(clamp); ro.observe(p); } }
     clamp();
   });
-  onBeforeUnmount(() => ro && ro.disconnect());
+  onBeforeUnmount(() => { if (ro) ro.disconnect(); if (o.viewport) removeEventListener('resize', clamp); });
 
   return { start, move, end, toggleSize, key, clamp };
 }

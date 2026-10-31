@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { reactive, ref, watch } from 'vue';
 import { load, save, isObj, numIn } from '../utils/storage.js';
 import { LANGS } from '../i18n/messages.js';
-import { sanitizeTune, CAM_TUNE_DEFAULT } from '../pose/camTune.js';
+import { sanitizeTune, loadTune, CAM_TUNE_DEFAULT } from '../pose/camTune.js';
 
 /** @typedef {{ cl: number, cr: number, g: Record<string, number> }} Layout  column widths (px, 0 = default) and card flex-grow by data-rz key */
 
@@ -16,11 +16,12 @@ const sanitizeLayout = v => {
   return { cl: numIn(v.cl, 0, 4000, 0), cr: numIn(v.cr, 0, 4000, 0), g };
 };
 
-/** @returns {import('../composables/useFloatWin.js').FloatRect} camera preview window; x = -1 → default place */
+/** @returns {import('../composables/useFloatWin.js').FloatRect & { page: true }} camera preview window in page coordinates;
+ *   x = -1 → default place. Rects saved before the window could leave the stage (no `page`) were stage-relative: re-place them */
 const sanitizeCamWin = v => {
-  if (!isObj(v)) return { x: -1, y: -1, w: 320 };
+  if (!isObj(v) || v.page !== true) return { x: -1, y: -1, w: 320, page: true };
   const x = numIn(v.x, 0, 8000, -1), y = numIn(v.y, 0, 8000, -1);
-  return { x: y < 0 ? -1 : x, y: x < 0 ? -1 : y, w: numIn(v.w, 160, 8000, 320) };
+  return { x: y < 0 ? -1 : x, y: x < 0 ? -1 : y, w: numIn(v.w, 160, 8000, 320), page: true };
 };
 
 export const VIEWS = [['正面', 0], ['3/4', -0.62], ['侧面', -1.5708], ['背面', 3.1416]];
@@ -41,7 +42,7 @@ export const useSettings = defineStore('settings', () => {
   const camWin = reactive(load('stick.camWin', sanitizeCamWin));
   const saveCamWin = () => save('stick.camWin', camWin);
   /** camera following (面板 → 摄像头跟随), persisted @type {import('../pose/camTune.js').CamTune} */
-  const camTune = reactive(load('stick.camTune', v => sanitizeTune(v)));
+  const camTune = reactive(load('stick.camTune', loadTune));
   /** @param {Partial<import('../pose/camTune.js').CamTune> | null} p  null = back to defaults */
   function setCamTune(p) { Object.assign(camTune, p ? sanitizeTune(p, camTune) : { ...CAM_TUNE_DEFAULT }); save('stick.camTune', { ...camTune }); }
   function resetLayout() {

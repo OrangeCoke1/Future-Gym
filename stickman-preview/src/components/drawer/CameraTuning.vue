@@ -1,11 +1,13 @@
 <script setup>
 // Panel · camera following: how the figure trades jitter against lag in camera mode. Presets plus three sliders
-// (One Euro cutoff at rest, its rise with speed, prediction lead); changes apply at once and are saved.
+// (One Euro cutoff at rest, its rise with speed, prediction lead) and the leg mode; changes apply at once and are saved.
 import { computed } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useEngine } from '../../composables/useEngine.js';
 import { useSettings } from '../../stores/settings.js';
 import { CAM_TUNE_PRESETS, CAM_TUNE_RANGE } from '../../pose/camTune.js';
+
+const LEGS = [['auto', '自动'], ['stand', '固定站姿']];
 
 const { t } = useI18n();
 const { engine } = useEngine();
@@ -57,6 +59,27 @@ const show = (k, v) => (k === 'minCut' ? v.toFixed(1) : String(Math.round(v * 10
         {{ t('恢复默认') }}
       </button>
     </div>
+    <div class="row">
+      <span class="note">{{ t('腿部') }}</span>
+      <div
+        class="seg"
+        role="group"
+        :aria-label="t('腿部跟随方式')"
+      >
+        <button
+          v-for="[m, name] in LEGS"
+          :key="m"
+          type="button"
+          :aria-pressed="String(tune.legs === m)"
+          @click="apply({ legs: m })"
+        >
+          {{ t(name) }}
+        </button>
+      </div>
+    </div>
+    <p class="note">
+      {{ tune.legs === 'stand' ? t('腿保持站姿，只有上半身跟着你动') : t('腿部看不清时自动回到站姿，膝盖不会反折') }}
+    </p>
     <label
       v-for="[k, name, step, unit, hint] in SLIDERS"
       :key="k"
