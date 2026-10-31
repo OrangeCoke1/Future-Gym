@@ -14,7 +14,8 @@ import { createStage } from '../render/stage.js';
 import { drawOverlay } from '../render/overlay.js';
 import { ruleOf, showOf, angleOf, updateRep, bump } from './reps.js';
 import { createFit, fitKeyOf, isFitAction } from '../pose/fit.js';
-import { camSolve } from '../pose/camera.js';
+import { camSolve, camPredict } from '../pose/camera.js';
+import { phaseTable, phaseAt, bothSides } from './phaseSync.js';
 import { createCamera } from './camera.js';
 
 /** @typedef {{ muscle: boolean, oxy: boolean, shade: boolean, line: boolean, angle: boolean, dots: boolean, orbit: boolean }} DisplayOpts */
@@ -39,6 +40,9 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     // as an animation, one full rep for every rep the person completes (jog: half a stride per step)
     camView, mirror: true, camStat: null, camAspect: null,  // camStat = [Chinese text, ...args] or null; camAspect = preview aspect, null = hidden
     RP: { act: null, t: 0, q: 0 }, fitAct: null, fitEnd: null,
+    // camera prediction lead (s): joints are extrapolated this far past the moment they are drawn (0 = off);
+    // sync = the action whose scripted rep the replay view is phase-locking to the person's live angle, or null
+    camLead: 0.08, sync: null, syncT: 0,
     run: playing, rate: 1,                              // what the counters and estimates follow: demo playback, or live tracking
     uiTick: true, uiT: 0, facing: { key: '正面', deg: 0 }, met: ACT.squat.met, real: null,
     mu: createMuscles(), rows: [], recovery: 0, load: createLoad(), M: createMetrics(), bio: createBio(), therm: createTherm(),
@@ -108,6 +112,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     if (ACT[S.action].rep.type === 'none') S.stateZh = ACT[S.action].rep.label;
   }
   function setCamView(v) { S.camView = v === 'replay' ? 'replay' : 'live'; S.blendFrom = S.curQ; S.blendT = 0; }
+  /** camera prediction lead in ms (0 = off, at most 150) */
+  function setCamLead(ms) { const v = Number(ms); S.camLead = Number.isFinite(v) ? clamp(v, 0, 150) / 1000 : 0.08; }
   function setMirror(v) { S.mirror = !!v; camera.setMirror(S.mirror); S.phase = null; S.lastLow = null; }
 
   /** world-front view presets (radians); the camera turns the short way round */
@@ -142,7 +148,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
       S.camLive = camera.tick(now);
       if (!replay) S.blendT = 1; else if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.4);
       // replay: play the recognised exercise for as many reps as the person has done (a bit faster when behind)
-      if (replay && RP.act && RP.q > 0) { const Pp = ACT[RP.act].P, s = Math.min(dt * (RP.q > 1.2 ? 1.8 : 1) / Pp, RP.q); RP.t += s * Pp; RP.q -= s; }
+      if (replay && RP.act && RP.q > 0 && !S.sync) { const Pp = ACT[RP.act].P, s = Math.min(dt * (RP.q > 1.2 ? 1.8 : 1) / Pp, RP.q); RP.t += s * Pp; RP.q -= s; }
     } else if (S.playing) { S.tAct += dt * S.speed; if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.6); }
     S.run = S.camOn ? (replay ? RP.q > 0 : S.camLive) : S.playing; S.rate = S.camOn ? 1 : S.speed;
     // camera mode: only credit the action's MET (and muscle effort) while the person is actually moving
@@ -151,10 +157,29 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     const kc = 1 - Math.exp(-dt * 7);
     c.yaw += (c.yawT - c.yaw) * kc; c.pitch += (c.pitchT - c.pitch) * kc;
 
+    // replay view + a tracked person + an exercise counted by one joint angle: follow the person's live angle
+    const sk = replay && S.camLive ? RP.act || S.action : null, tab = sk ? phaseTable(sk) : null;
+    if ((tab ? sk : null) !== S.sync) {
+      S.blendFrom = S.curQ; S.blendT = 0;
+      if (tab) S.syncT = phaseAt(tab, bothSides(camSolve(camera.pose, sk, camPredict(camera.pose, now, S.camLead)).P, ACT[sk].show));
+      else RP.t = 0;                                      // back to the queued replay: from the start of a rep, not mid-squat
+      S.sync = tab ? sk : null;
+    }
+
     let sol;
     if (S.camLive && !replay) {
-      ground.k = 1 - Math.exp(-dt * 6);
-      sol = camSolve(camera.pose, S.action);
+      ground.k = 1 - Math.exp(-dt * 20);
+      sol = camSolve(camera.pose, S.action, camPredict(camera.pose, now, S.camLead));
+    } else if (S.sync) {
+      const A2 = ACT[S.sync], ang = bothSides(camSolve(camera.pose, S.sync, camPredict(camera.pose, now, S.camLead)).P, A2.show);
+      S.syncT += (phaseAt(tab, ang) - S.syncT) * (1 - Math.exp(-dt * 30));
+      RP.q = 0;                                           // reps are being shown as they happen: nothing to catch up on
+      if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.15);
+      let q = A2.pose(S.syncT, A2.P);
+      if (S.blendFrom && S.blendT < 1) q = lerpQ(S.blendFrom, q, easeIO(S.blendT));
+      S.curQ = q;
+      ground.k = 1 - Math.exp(-dt * 40);
+      sol = solve(q);
     } else {
       // replay: the recognised exercise as an animation (standing idle until something is recognised);
       // live camera with nobody tracked: stand idle instead of playing a scripted exercise
@@ -207,7 +232,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   }
 
   return {
-    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror,
+    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamLead,
     /** the camera preview's video element and 2D check canvas */
     attachCamera(video, canvas) { camera.attach(video, canvas); },
     setPlaying(v) { S.playing = !!v; },

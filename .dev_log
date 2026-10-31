@@ -65,3 +65,7 @@
 ## [2026-10-30 18:16] 多语言改用 vue-i18n
 - **Goal**: 自写的 translate() 换成 vue-i18n，保留以中文原文为键的翻译表，界面文字不变
 - **Changes**: 新增依赖 `vue-i18n@11.4.14`（原计划 10.0.8，因其依赖 @intlify/core-base 有高危漏洞 GHSA-83rm-6c8r-g728 / GHSA-8rc2-428q-7ww3 且 10.x 无修复版）；新增 `src/i18n/index.js`（createI18n，legacy: false，fallback zh，关闭缺失警告）；`src/i18n/messages.js` 由 I18N 生成 zh/ja/en messages，删除 translate()；`src/i18n/useI18n.js` 改用 vue-i18n 全局 composer，t(s, ...a) 转为列表插值，useDocumentLang 同步 locale；`src/main.js` 注册 i18n；`CLAUDE.md` 更新 i18n 说明；中日英三种语言改动前后页面文字（120 段）与 31 个 aria-label/title 完全一致
+
+## [2026-10-31 15:20] 摄像头模式小人同步跟随（降低延迟 + 预测）
+- **Goal**: 摄像头模式下小人跟随动作有明显延迟；改为“我蹲它也蹲”
+- **Changes**: `src/pose/camera.js`：One Euro 参数改为 minCut 2 / beta 8 / dCut 2；camIngest 记录每个关节的速度（Vl）和更新时间（Tj）；新增 `camPredict(cam, now, lead)`，按速度外推（最长 150 ms，限速 3 m/s，静止时不外推以免放大抖动）；`camSolve` 可传入关节。`src/engine/phaseSync.js`（新增）：对角度计数的动作（深蹲、弯举、推举、侧平举）预先算出“标准动画时间 ↔ 关节角”表，用人的实时角度查出动画进度。`src/engine/engine.js`：实时模式每帧使用预测后的关节，地面平滑 6 → 20/s；复现模式在跟踪到人且动作可同步时改为相位同步，其他动作仍按次复现；新增 `S.camLead`（默认 0.08 s）与 `setCamLead(ms)`。`src/App.vue`：控制台 `stickman.setCamLead(ms)`。`CLAUDE.md` 同步说明。离线模拟（30 fps 识别、60 ms 采集识别延迟）：小人相对真人的滞后 100 ms → 约 0 ms，静止抖动 2.3 → 3.0 mm
