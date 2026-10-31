@@ -32,7 +32,8 @@ useDocumentLang();
 useLayoutVars();
 const { t } = useI18n();
 // entry point for a real heart-rate source (e.g. a Bluetooth strap): stickman.setHeartRate(bpm) on every reading
-window.stickman = { setHeartRate: bpm => engine.setHeartRate(bpm) };
+// camera prediction lead for tuning on a real webcam: stickman.setCamLead(ms), 0 = off, default 80
+window.stickman = { setHeartRate: bpm => engine.setHeartRate(bpm), setCamLead: ms => engine.setCamLead(ms) };
 
 const drawerOpen = ref(false), topBar = ref(null);
 watch(drawerOpen, v => { if (!v && topBar.value) topBar.value.focus(); });

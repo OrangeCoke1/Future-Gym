@@ -9,7 +9,9 @@ const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 
 /** actions that hold dumbbells (the camera pose shows them in the hands too) */
 export const HAS_PROP = Object.fromEntries(Object.keys(ACT).map(k => [k, ACT[k].pose(0, ACT[k].P).prop > 0.5]));
 
-function oneEuro(minCut = 1.2, beta = 4, dCut = 1) {
+// One Euro filter, tuned for latency: at rest the cutoff is minCut (jitter stays low), and it rises with speed, so a
+// squat is followed within a few tens of ms instead of the ~130 ms trail of a 1.2 Hz cutoff.
+function oneEuro(minCut = 2, beta = 8, dCut = 2) {
   let x = null, dx = 0, tp = 0;
   const alpha = (cut, dt) => { const r = TAU * cut * dt; return r / (r + 1); };
   return (v, t) => {
@@ -21,10 +23,20 @@ function oneEuro(minCut = 1.2, beta = 4, dCut = 1) {
   };
 }
 
-/** @typedef {{ J: Record<string, import('../core/math.js').Vec3>, F: Record<string, Function[]>, tPrev: number, seen: number, motion: number, fpsN: number, lm2d: object[] | null }} CamPose
- *   J = filtered joints (hip-centred), seen = last time both shoulders were visible (ms), motion = mean limb speed (m/s) */
+// prediction: each joint's velocity (from the filtered positions) carries it forward to the moment it is drawn plus
+// a small lead, which hides most of the camera + model delay. Bounded, so a sudden stop overshoots only a little.
+const VEL_CUT = 4;          // Hz, smoothing of the velocity estimate
+const MAX_V = 3;            // m/s, faster estimates are clamped (detection glitches)
+const MAX_H = 0.15;         // s, never extrapolate further than this
+const STALE = 0.25;         // s, a joint not updated for this long is held, not extrapolated
+const V_REST = 0.08, V_FULL = 0.25;   // m/s: below V_REST the joint counts as still (no prediction, so jitter is not amplified), full lead from V_FULL
+
+/** @typedef {{ J: Record<string, import('../core/math.js').Vec3>, Vl: Record<string, import('../core/math.js').Vec3>, Tj: Record<string, number>,
+ *   F: Record<string, Function[]>, tPrev: number, seen: number, motion: number, fpsN: number, lm2d: object[] | null }} CamPose
+ *   J = filtered joints (hip-centred), Vl = their velocities (m/s), Tj = when each joint was last updated (s),
+ *   seen = last time both shoulders were visible (ms), motion = mean limb speed (m/s) */
 /** @returns {CamPose} */
-export const createCamPose = () => { const c = { J: null, F: {}, tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null }; camSeed(c); return c; };
+export const createCamPose = () => { const c = { J: null, Vl: {}, Tj: {}, F: {}, tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null }; camSeed(c); return c; };
 
 /** neutral standing pose, so joints that have never been seen have a "last frame" to fall back on */
 export function camSeed(cam) {
@@ -34,7 +46,7 @@ export function camSeed(cam) {
     J['ear' + s] = add(r('head'), V(s === 'L' ? 0.1 : -0.1, 0, 0));
   }
   J.nose = add(r('head'), V(0, -0.02, 0.17));
-  cam.J = J; cam.F = {}; cam.motion = 0; cam.seen = -1e9;
+  cam.J = J; cam.Vl = {}; cam.Tj = {}; cam.F = {}; cam.motion = 0; cam.seen = -1e9;
 }
 
 /** one detection result into the filtered joints; mir = mirror view */
@@ -51,6 +63,13 @@ export function camIngest(cam, res, now, mir) {
     // MediaPipe world space is x → image right, y → down, z → away from the camera; ours is X = character's left, Y up, Z front.
     // Mirroring flips X and (below) swaps which side of the body feeds L / R, so the figure moves like a mirror image.
     const v = V(f[0](mir ? -p.x : p.x, t), f[1](-p.y, t), f[2](-p.z, t));
+    const tj = cam.Tj[name], dj = tj == null ? 0 : t - tj;
+    if (dj > 0 && dj < STALE) {
+      const raw = mul(sub(v, J[name]), 1 / dj), sp = len(raw), a = 1 - Math.exp(-TAU * VEL_CUT * dj);
+      const lim = sp > MAX_V ? mul(raw, MAX_V / sp) : raw, old = cam.Vl[name] || V(0, 0, 0);
+      cam.Vl[name] = add(old, mul(sub(lim, old), a));
+    } else cam.Vl[name] = V(0, 0, 0);
+    cam.Tj[name] = t;
     if (track && dt > 0 && dt < 0.5) { mv += len(sub(v, J[name])) / dt; mvN++; }
     J[name] = v;
   };
@@ -61,9 +80,27 @@ export function camIngest(cam, res, now, mir) {
   if (vis(11) >= 0.5 && vis(12) >= 0.5) cam.seen = now;
 }
 
-/** @returns {import('../core/skeleton.js').Solved} */
-export function camSolve(cam, action) {
-  const J = cam.J, P = {}, D = {};
+/**
+ * the filtered joints carried forward to `now` + lead (s); joints that are stale or have no velocity yet stay put
+ * @param {CamPose} cam @param {number} now ms @param {number} lead s
+ * @returns {Record<string, import('../core/math.js').Vec3>}
+ */
+export function camPredict(cam, now, lead) {
+  if (!(lead > 0)) return cam.J;
+  const t = now / 1000, out = {};
+  for (const k in cam.J) {
+    const tj = cam.Tj[k], vl = cam.Vl[k];
+    const h = tj == null || !vl || t - tj > STALE ? 0 : Math.min(MAX_H, Math.max(0, t - tj + lead));
+    const g = h > 0 ? Math.min(1, Math.max(0, (len(vl) - V_REST) / (V_FULL - V_REST))) : 0;
+    out[k] = g > 0 ? add(cam.J[k], mul(vl, h * g)) : cam.J[k];
+  }
+  return out;
+}
+
+/** @param {CamPose} cam @param {string} action @param {Record<string, import('../core/math.js').Vec3>} [J] joints to use (default: the filtered ones)
+ * @returns {import('../core/skeleton.js').Solved} */
+export function camSolve(cam, action, J = cam.J) {
+  const P = {}, D = {};
   const dir = (a, b, fb) => { const d = sub(b, a); return len(d) > 1e-4 ? nrm(d) : fb; };
   const perp = (v, n, fb) => { const p = sub(v, mul(n, dot(v, n))); return len(p) > 1e-3 ? nrm(p) : fb; };
   const pelJ = mul(add(J.hipL, J.hipR), 0.5), shJ = mul(add(J.shL, J.shR), 0.5);
