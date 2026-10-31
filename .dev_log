@@ -65,3 +65,7 @@
 ## [2026-10-30 18:16] 多语言改用 vue-i18n
 - **Goal**: 自写的 translate() 换成 vue-i18n，保留以中文原文为键的翻译表，界面文字不变
 - **Changes**: 新增依赖 `vue-i18n@11.4.14`（原计划 10.0.8，因其依赖 @intlify/core-base 有高危漏洞 GHSA-83rm-6c8r-g728 / GHSA-8rc2-428q-7ww3 且 10.x 无修复版）；新增 `src/i18n/index.js`（createI18n，legacy: false，fallback zh，关闭缺失警告）；`src/i18n/messages.js` 由 I18N 生成 zh/ja/en messages，删除 translate()；`src/i18n/useI18n.js` 改用 vue-i18n 全局 composer，t(s, ...a) 转为列表插值，useDocumentLang 同步 locale；`src/main.js` 注册 i18n；`CLAUDE.md` 更新 i18n 说明；中日英三种语言改动前后页面文字（120 段）与 31 个 aria-label/title 完全一致
+
+## [2026-10-31 15:10] 相机预览改为可拖动、可缩放的浮窗
+- **Goal**: 舞台右下角的相机预览太小（最宽 170px），改成更大的浮窗，可移动、可调整大小
+- **Changes**: 新增 `src/composables/useFloatWin.js`（拖标题栏移动、拖右下角缩放、双击/按钮切换大小、方向键移动与 Shift+方向键缩放，限制在舞台内，舞台尺寸变化时重新限制，并阻止事件冒泡以免转动小人视角）；`CamPreview.vue` 改为带标题栏和缩放角的浮窗，默认宽约舞台的 45%（320–480px）；`stores/settings.js` 新增 `camWin`（localStorage `stick.camWin`，numIn 校验），「重置布局」一并复位；`styles/stage.css` 用深色毛玻璃浮窗样式替换固定的 `.cam-box`；`engine/camera.js` 骨架画布宽 336 → 640，`pose/camera.js` 线宽和关节点半径按画布宽度等比放大；`i18n/messages.js` 新增 放大 / 缩小 / 提示文字的日英翻译。lint、build 通过；无头 Chromium + 假摄像头验证了拖动、缩放、上限限制、双击切换、刷新后保留位置

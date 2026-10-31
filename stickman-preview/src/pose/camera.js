@@ -99,14 +99,15 @@ export function camDraw(g, lm2d) {
   g.clearRect(0, 0, w, h);
   if (!l) return;
   const ok = i => (l[i].visibility == null ? 1 : l[i].visibility) >= 0.5;
-  g.lineWidth = 4; g.lineCap = 'round';
+  const k = w / 336;                                       // sizes were tuned for a 336 px wide canvas
+  g.lineWidth = 4 * k; g.lineCap = 'round';
   for (const [a, b] of BONES) {
     g.strokeStyle = ok(a) && ok(b) ? C.ivory : C.off;
     g.beginPath(); g.moveTo(l[a].x * w, l[a].y * h); g.lineTo(l[b].x * w, l[b].y * h); g.stroke();
   }
   for (const i of [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) {
     g.fillStyle = ok(i) ? C.acc : C.off;
-    g.beginPath(); g.arc(l[i].x * w, l[i].y * h, 5, 0, TAU); g.fill();
+    g.beginPath(); g.arc(l[i].x * w, l[i].y * h, 5 * k, 0, TAU); g.fill();
   }
 }
 

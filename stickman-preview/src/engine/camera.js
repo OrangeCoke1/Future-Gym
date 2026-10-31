@@ -34,7 +34,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
       if (stale()) { s.getTracks().forEach(tr => tr.stop()); return; }
       stream = s; video.srcObject = s; await video.play();
       const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
-      if (g) { g.canvas.width = 336; g.canvas.height = Math.round(336 * vh / vw); }
+      if (g) { g.canvas.width = 640; g.canvas.height = Math.round(640 * vh / vw); }
       onShow(vw + ' / ' + vh);
       if (!lm) {
         onStatus('正在加载识别模型…');
