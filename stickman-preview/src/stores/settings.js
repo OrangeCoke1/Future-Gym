@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { reactive, ref, watch } from 'vue';
 import { load, save, isObj, numIn } from '../utils/storage.js';
 import { LANGS } from '../i18n/messages.js';
+import { sanitizeTune, CAM_TUNE_DEFAULT } from '../pose/camTune.js';
 
 /** @typedef {{ cl: number, cr: number, g: Record<string, number> }} Layout  column widths (px, 0 = default) and card flex-grow by data-rz key */
 
@@ -39,9 +40,13 @@ export const useSettings = defineStore('settings', () => {
   const saveLayout = () => save('stick.layout', layout);
   const camWin = reactive(load('stick.camWin', sanitizeCamWin));
   const saveCamWin = () => save('stick.camWin', camWin);
+  /** camera following (面板 → 摄像头跟随), persisted @type {import('../pose/camTune.js').CamTune} */
+  const camTune = reactive(load('stick.camTune', v => sanitizeTune(v)));
+  /** @param {Partial<import('../pose/camTune.js').CamTune> | null} p  null = back to defaults */
+  function setCamTune(p) { Object.assign(camTune, p ? sanitizeTune(p, camTune) : { ...CAM_TUNE_DEFAULT }); save('stick.camTune', { ...camTune }); }
   function resetLayout() {
     layout.cl = layout.cr = 0; layout.g = {}; saveLayout();
     Object.assign(camWin, sanitizeCamWin(null)); saveCamWin();
   }
-  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout };
+  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune };
 });

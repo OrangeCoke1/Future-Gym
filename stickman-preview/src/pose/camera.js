@@ -3,22 +3,23 @@
 import { V, add, sub, mul, dot, cross, len, nrm, TAU, UP, DOWN, BACK, C } from '../core/math.js';
 import { B, base, solve, settleGround } from '../core/skeleton.js';
 import { ACT } from '../core/actions.js';
+import { CAM_TUNE_DEFAULT } from './camTune.js';
 
 const LM = { ear: 7, sh: 11, el: 13, wr: 15, hip: 23, kn: 25, an: 27, heel: 29, toe: 31 };   // left-side index; right side = +1
 const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
 /** actions that hold dumbbells (the camera pose shows them in the hands too) */
 export const HAS_PROP = Object.fromEntries(Object.keys(ACT).map(k => [k, ACT[k].pose(0, ACT[k].P).prop > 0.5]));
 
-// One Euro filter, tuned for latency: at rest the cutoff is minCut (jitter stays low), and it rises with speed, so a
-// squat is followed within a few tens of ms instead of the ~130 ms trail of a 1.2 Hz cutoff.
-function oneEuro(minCut = 2, beta = 8, dCut = 2) {
+// One Euro filter: at rest the cutoff is tune.minCut (jitter stays low), and it rises by tune.beta per m/s of speed, so
+// fast moves are followed closely. The tuning object is read on every sample, so panel changes apply at once.
+function oneEuro(tune, dCut = 2) {
   let x = null, dx = 0, tp = 0;
   const alpha = (cut, dt) => { const r = TAU * cut * dt; return r / (r + 1); };
   return (v, t) => {
     if (x === null) { x = v; tp = t; return v; }
     const dt = Math.max(1e-3, t - tp); tp = t;
     dx += ((v - x) / dt - dx) * alpha(dCut, dt);
-    x += (v - x) * alpha(minCut + beta * Math.abs(dx), dt);
+    x += (v - x) * alpha(tune.minCut + tune.beta * Math.abs(dx), dt);
     return x;
   };
 }
@@ -32,11 +33,11 @@ const STALE = 0.25;         // s, a joint not updated for this long is held, not
 const V_REST = 0.08, V_FULL = 0.25;   // m/s: below V_REST the joint counts as still (no prediction, so jitter is not amplified), full lead from V_FULL
 
 /** @typedef {{ J: Record<string, import('../core/math.js').Vec3>, Vl: Record<string, import('../core/math.js').Vec3>, Tj: Record<string, number>,
- *   F: Record<string, Function[]>, tPrev: number, seen: number, motion: number, fpsN: number, lm2d: object[] | null }} CamPose
+ *   F: Record<string, Function[]>, tune: import('./camTune.js').CamTune, tPrev: number, seen: number, motion: number, fpsN: number, lm2d: object[] | null }} CamPose
  *   J = filtered joints (hip-centred), Vl = their velocities (m/s), Tj = when each joint was last updated (s),
  *   seen = last time both shoulders were visible (ms), motion = mean limb speed (m/s) */
 /** @returns {CamPose} */
-export const createCamPose = () => { const c = { J: null, Vl: {}, Tj: {}, F: {}, tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null }; camSeed(c); return c; };
+export const createCamPose = () => { const c = { J: null, Vl: {}, Tj: {}, F: {}, tune: { ...CAM_TUNE_DEFAULT }, tPrev: 0, seen: -1e9, motion: 0, fpsN: 0, lm2d: null }; camSeed(c); return c; };
 
 /** neutral standing pose, so joints that have never been seen have a "last frame" to fall back on */
 export function camSeed(cam) {
@@ -59,7 +60,7 @@ export function camIngest(cam, res, now, mir) {
   let mv = 0, mvN = 0;
   const put = (name, i, track) => {
     if (vis(i) < 0.5) return;                                   // low confidence: keep the previous frame's value
-    const p = wl[i], f = cam.F[name] || (cam.F[name] = [oneEuro(), oneEuro(), oneEuro()]);
+    const p = wl[i], f = cam.F[name] || (cam.F[name] = [oneEuro(cam.tune), oneEuro(cam.tune), oneEuro(cam.tune)]);
     // MediaPipe world space is x → image right, y → down, z → away from the camera; ours is X = character's left, Y up, Z front.
     // Mirroring flips X and (below) swaps which side of the body feeds L / R, so the figure moves like a mirror image.
     const v = V(f[0](mir ? -p.x : p.x, t), f[1](-p.y, t), f[2](-p.z, t));

@@ -4,6 +4,7 @@
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import DisplayOptions from './DisplayOptions.vue';
+import CameraTuning from './CameraTuning.vue';
 import ProfileForm from './ProfileForm.vue';
 import SessionLog from './SessionLog.vue';
 import DataNotes from './DataNotes.vue';
@@ -43,6 +44,7 @@ onBeforeUnmount(() => removeEventListener('keydown', onKey));
     </div>
     <div class="dr-b">
       <DisplayOptions />
+      <CameraTuning />
       <ProfileForm />
       <SessionLog />
       <DataNotes />

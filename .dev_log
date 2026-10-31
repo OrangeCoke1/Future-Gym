@@ -73,3 +73,7 @@
 ## [2026-10-31 15:20] 摄像头模式小人同步跟随（降低延迟 + 预测）
 - **Goal**: 摄像头模式下小人跟随动作有明显延迟；改为“我蹲它也蹲”
 - **Changes**: `src/pose/camera.js`：One Euro 参数改为 minCut 2 / beta 8 / dCut 2；camIngest 记录每个关节的速度（Vl）和更新时间（Tj）；新增 `camPredict(cam, now, lead)`，按速度外推（最长 150 ms，限速 3 m/s，静止时不外推以免放大抖动）；`camSolve` 可传入关节。`src/engine/phaseSync.js`（新增）：对角度计数的动作（深蹲、弯举、推举、侧平举）预先算出“标准动画时间 ↔ 关节角”表，用人的实时角度查出动画进度。`src/engine/engine.js`：实时模式每帧使用预测后的关节，地面平滑 6 → 20/s；复现模式在跟踪到人且动作可同步时改为相位同步，其他动作仍按次复现；新增 `S.camLead`（默认 0.08 s）与 `setCamLead(ms)`。`src/App.vue`：控制台 `stickman.setCamLead(ms)`。`CLAUDE.md` 同步说明。离线模拟（30 fps 识别、60 ms 采集识别延迟）：小人相对真人的滞后 100 ms → 约 0 ms，静止抖动 2.3 → 3.0 mm
+
+## [2026-10-31 15:50] 面板新增「摄像头跟随」调节
+- **Goal**: 不用控制台，在面板里调整小人跟随的防抖 / 跟手程度
+- **Changes**: 新增 `src/pose/camTune.js`（CamTune 结构、默认值、取值范围、稳定 / 平衡 / 跟手三个预设、sanitizeTune 校验）；`src/pose/camera.js`：One Euro 每次采样读取 `cam.tune`（minCut、beta），调整立即生效；`src/engine/engine.js`：`setCamLead` 改为 `setCamTune(partial)`，预测提前量取自 `tune.lead`，保留 `setCamLead(ms)` 作为控制台快捷方式；`src/stores/settings.js`：新增 `camTune`（localStorage `stick.camTune`，经 sanitizeTune 校验）与 `setCamTune`；新增 `src/components/drawer/CameraTuning.vue`（预设、三个滑块、恢复默认、提示文字），挂在 `SettingsDrawer.vue` 的「显示」之后；`styles/drawer.css` 滑块样式；`App.vue` 启动时应用已保存的设置；`i18n/messages.js` 补日英翻译；`CLAUDE.md` 同步说明。lint、build 通过；无头 Chromium 验证了预设、滑块、刷新后保留、恢复默认、localStorage 坏数据回落
