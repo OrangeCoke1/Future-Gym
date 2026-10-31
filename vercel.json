@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd stickman-preview && npm ci",
+  "buildCommand": "cd stickman-preview && npm run build",
+  "outputDirectory": "stickman-preview/dist",
+  "framework": null
+}
