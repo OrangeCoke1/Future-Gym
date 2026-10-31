@@ -15,6 +15,13 @@ const sanitizeLayout = v => {
   return { cl: numIn(v.cl, 0, 4000, 0), cr: numIn(v.cr, 0, 4000, 0), g };
 };
 
+/** @returns {import('../composables/useFloatWin.js').FloatRect} camera preview window; x = -1 → default place */
+const sanitizeCamWin = v => {
+  if (!isObj(v)) return { x: -1, y: -1, w: 320 };
+  const x = numIn(v.x, 0, 8000, -1), y = numIn(v.y, 0, 8000, -1);
+  return { x: y < 0 ? -1 : x, y: x < 0 ? -1 : y, w: numIn(v.w, 160, 8000, 320) };
+};
+
 export const VIEWS = [['正面', 0], ['3/4', -0.62], ['侧面', -1.5708], ['背面', 3.1416]];
 export const COLORS = [['#1D231E', '墨色'], ['#E0704A', '橙'], ['#6F7F5A', '橄榄绿'], ['#6E84A8', '灰蓝'], ['#FBFAF2', '白']];
 
@@ -30,6 +37,11 @@ export const useSettings = defineStore('settings', () => {
   const view = ref(-0.62);                                // pressed view preset, null after a manual drag
   const layout = reactive(load('stick.layout', sanitizeLayout));
   const saveLayout = () => save('stick.layout', layout);
-  function resetLayout() { layout.cl = layout.cr = 0; layout.g = {}; saveLayout(); }
-  return { lang, camView, opts, color, view, layout, saveLayout, resetLayout };
+  const camWin = reactive(load('stick.camWin', sanitizeCamWin));
+  const saveCamWin = () => save('stick.camWin', camWin);
+  function resetLayout() {
+    layout.cl = layout.cr = 0; layout.g = {}; saveLayout();
+    Object.assign(camWin, sanitizeCamWin(null)); saveCamWin();
+  }
+  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout };
 });
