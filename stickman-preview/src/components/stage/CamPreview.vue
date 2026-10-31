@@ -1,31 +1,88 @@
 <script setup>
-// Camera preview on the stage: the video with the detected landmarks drawn over it (mirrored with the figure).
-import { ref, onMounted } from 'vue';
+// Camera preview on the stage: the video with the detected landmarks drawn over it (mirrored with the figure),
+// in a floating window — drag the title bar to move it, the corner to resize it, double-click to toggle size.
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useEngine } from '../../composables/useEngine.js';
+import { useSettings } from '../../stores/settings.js';
+import { useFloatWin, WIN_SMALL } from '../../composables/useFloatWin.js';
 
 const { t } = useI18n();
 const { engine, live } = useEngine();
-const video = ref(null), canvas = ref(null);
+const settings = useSettings();
+const win = ref(null), video = ref(null), canvas = ref(null);
+const rect = settings.camWin;
+
+/** default: bottom-right, above the angle gauge, ~ a third of the stage width */
+const place = (w, h) => {
+  const pw = Math.round(Math.min(Math.max(w * 0.45, 320), 480, w - 40));
+  const ph = pw / (Number(live.camAspect) || 4 / 3) + 28;
+  return { x: w - pw - 20, y: Math.max(0, h - ph - 150), w: pw };
+};
+const fw = useFloatWin(win, rect, () => live.camAspect, settings.saveCamWin, place);
+const style = computed(() => ({ left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px' }));
+const big = computed(() => rect.w > WIN_SMALL + 40);
+
 onMounted(() => engine.attachCamera(video.value, canvas.value));
+// shown for the first time, aspect changed, or layout reset: place / re-clamp once laid out
+watch(() => [live.camAspect, rect.x < 0], () => nextTick(fw.clamp));
 </script>
 
 <template>
   <div
-    class="cam-box"
-    :class="{ mir: live.mirror }"
-    :style="live.camAspect ? { aspectRatio: live.camAspect } : null"
+    ref="win"
+    class="cam-win"
+    :style="style"
     :hidden="!live.camAspect"
+    @pointerdown.stop
   >
-    <video
-      ref="video"
-      playsinline
-      muted
-      :aria-label="t('摄像头画面')"
-    />
-    <canvas
-      ref="canvas"
+    <div
+      class="cam-bar"
+      tabindex="0"
+      :title="t('拖动移动，拖右下角调整大小，双击切换大小')"
+      :aria-label="t('摄像头画面浮窗，方向键移动，Shift+方向键调整大小')"
+      @pointerdown="fw.start($event, 'move')"
+      @pointermove="fw.move"
+      @pointerup="fw.end"
+      @pointercancel="fw.end"
+      @dblclick="fw.toggleSize"
+      @keydown="fw.key"
+    >
+      <span class="k">{{ t('摄像头画面') }}</span>
+      <button
+        type="button"
+        class="cam-sz"
+        :aria-label="big ? t('缩小') : t('放大')"
+        :title="big ? t('缩小') : t('放大')"
+        @pointerdown.stop
+        @click="fw.toggleSize"
+      >
+        {{ big ? '−' : '+' }}
+      </button>
+    </div>
+    <div
+      class="cam-box"
+      :class="{ mir: live.mirror }"
+      :style="live.camAspect ? { aspectRatio: live.camAspect } : null"
+    >
+      <video
+        ref="video"
+        playsinline
+        muted
+        :aria-label="t('摄像头画面')"
+      />
+      <canvas
+        ref="canvas"
+        aria-hidden="true"
+      />
+    </div>
+    <span
+      class="cam-rs"
       aria-hidden="true"
+      @pointerdown="fw.start($event, 'size')"
+      @pointermove="fw.move"
+      @pointerup="fw.end"
+      @pointercancel="fw.end"
     />
   </div>
 </template>
