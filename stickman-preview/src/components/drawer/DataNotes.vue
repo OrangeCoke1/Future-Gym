@@ -38,6 +38,13 @@ const NOTES = [
         >CC BY 4.0</a></span>
       </li>
       <li>
+        <span class="est">{{ t('模型') }}</span><span>Xbot · Michelle · <a
+          href="https://www.mixamo.com"
+          target="_blank"
+          rel="noopener"
+        >Adobe Mixamo</a></span>
+      </li>
+      <li>
         <span class="est">{{ t('骨架计算') }}</span><span>{{ t('重心与左右平衡由 3D 骨架的各段位置按人体质量分布算出；演示模式下骨架来自示例动作。') }}</span>
       </li>
     </ul>

@@ -79,6 +79,7 @@ export const I18N = {
   '越小越稳，站着不动时抖就调小': ['小さいほど安定。静止時に震えるなら下げる', 'Lower is steadier; lower it if the figure shakes while you stand still'],
   '越大动起来越跟手，动作拖后就调大': ['大きいほど動きに追従。遅れるなら上げる', 'Higher follows fast moves closer; raise it if the figure trails behind'],
   '越大越超前，动作停下时冲过头就调小': ['大きいほど先読み。止まった時に行き過ぎるなら下げる', 'Higher predicts further ahead; lower it if the figure overshoots when you stop'],
+  '原版': ['オリジナル', 'Original'], 'Xbot': ['Xbot', 'Xbot'], 'Michelle': ['Michelle', 'Michelle'],
   '识别精度': ['認識精度', 'Tracking accuracy'], '高精度': ['高精度', 'High'], '标准': ['標準', 'Standard'],
   '高精度模型，四肢位置更准，电脑较慢时帧率会降低': ['高精度モデル。手足の位置がより正確ですが、遅い PC ではフレームレートが下がります', 'High-accuracy model: limbs line up better, but the frame rate drops on slower computers'],
   '标准模型，速度更快，四肢偶尔对不准': ['標準モデル。速いですが、手足の位置が時々ずれます', 'Standard model: faster, but limbs are sometimes off'],

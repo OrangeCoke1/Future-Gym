@@ -120,6 +120,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   /** camera following: One Euro minCut / beta and prediction lead (ms); fields left out or invalid keep their value
    * @param {Partial<import('../pose/camTune.js').CamTune>} p */
   function setCamTune(p) { Object.assign(camera.pose.tune, sanitizeTune(p, camera.pose.tune)); }
+  let body = 'male';
   /** prediction lead (s) for this frame */
   const lead = () => camera.pose.tune.lead / 1000;
   function setMirror(v) { S.mirror = !!v; camera.setMirror(S.mirror); S.phase = null; S.lastLow = null; }
@@ -137,6 +138,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   function attach(gl, fx) {
     S.stage = createStage({ canvas: gl, act: S.mu.musAct, onMode: (m, dark) => { S.mode = m; S.dark = dark; } });
     overlay = fx.getContext('2d');
+    if (S.stage && body !== 'male') S.stage.setBody(body);
     return !!S.stage;
   }
   /** CSS size of the stage canvases */
@@ -236,7 +238,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     const fv = rotX(rotY(D.bodyF, -c.yaw), c.pitch);
     const deg = Math.round(Math.atan2(fv.x, fv.z) * 180 / Math.PI), ad = Math.abs(deg);
     S.facing = { key: ad < 30 ? '正面' : ad > 150 ? '背面' : deg > 0 ? '朝右' : '朝左', deg: ad };
-    if (S.stage && overlay) drawOverlay(overlay, { ...S.stage.view, project: S.stage.project, P, show: S.show, curAngle: S.curAngle, dark: S.dark, angle: opts.angle, dots: opts.dots });
+    if (S.stage && overlay) drawOverlay(overlay, { ...S.stage.view, project: S.stage.project, P: S.stage.mapP(P), show: S.show, curAngle: S.curAngle, dark: S.dark, angle: opts.angle, dots: opts.dots });
 
     for (const f of frameSubs) f(S, dt);
     if (S.uiTick) for (const f of tickSubs) f(S);
@@ -252,6 +254,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     setPlaying(v) { S.playing = !!v; },
     setSpeed(v) { S.speed = v; },
     setMode(m) { if (S.stage) S.stage.mode(m); },
+    /** body model (面板 → 人体模型): 'male' | 'xbot' | 'michelle'; kept until the stage exists */
+    setBody(k) { body = k; if (S.stage) S.stage.setBody(k); },
     setColor(hex) { if (S.stage) S.stage.color(hex); },
     setHeartRate(bpm) { setHeartRate(S.M, bpm, performance.now()); },
     clearSets() { S.sets.length = 0; },

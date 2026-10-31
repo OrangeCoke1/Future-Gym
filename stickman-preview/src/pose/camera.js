@@ -231,7 +231,7 @@ function footDir(cam, J, n, bodyF, fb) {
  * @returns {import('../core/skeleton.js').Solved}
  */
 export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
-  const P = {}, D = {}, grip = { L: 0, R: 0 };
+  const P = {}, D = {}, grip = { L: 0, R: 0 }, fingers = { L: null, R: null };
   const dir = (a, b, fb) => { const d = sub(b, a); return len(d) > 1e-4 ? nrm(d) : fb; };
   const perp = (v, n, fb) => { const p = sub(v, mul(n, dot(v, n))); return len(p) > 1e-3 ? nrm(p) : fb; };
   const shJ = mul(add(J.shL, J.shR), 0.5);
@@ -248,7 +248,7 @@ export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
     // wrist roll: the tracked palm axis (hand tracking on and the hand just seen), else the body's facing
     const hs = cam.hands[n], ax = rollAxis(hs, lo, now);
     P['hand' + n] = add(wr, mul(lo, 0.1)); P['thumb' + n] = add(P['hand' + n], mul(ax || perp(bodyF, lo, up), 0.055));
-    if (handLive(hs, now)) grip[n] = hs.grip;
+    if (handLive(hs, now)) { grip[n] = hs.grip; fingers[n] = hs.curl; }
     const { tu, sl } = legDirs(J, n, s, up, side, bodyF, legConf(cam, n));
     const hip = mul(hipAx, s * B.hipW), kn = add(hip, mul(tu, B.thigh)), an = add(kn, mul(sl, B.shin));
     P['hip' + n] = hip; P['kn' + n] = kn; P['an' + n] = an;
@@ -263,7 +263,7 @@ export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
   const minB = Math.min(P.heelL.y, P.toeL.y, P.heelR.y, P.toeR.y) - B.footR;      // world landmarks are hip-centred: stand the figure on the floor
   const lift = V(0, -settleGround(minB), 0);
   for (const k in P) P[k] = add(P[k], lift);
-  return { P, D, prop: !!prop, grip, jump: 0 };
+  return { P, D, prop: !!prop, grip, fingers, jump: 0 };
 }
 
 /** small 2D check view: ivory / orange = confident, grey = low visibility (held) */

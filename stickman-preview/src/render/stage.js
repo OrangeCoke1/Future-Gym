@@ -7,9 +7,13 @@ import { createSdfBody } from './sdfBody.js';
 import { createPoser } from './poser.js';
 import { createParticles } from './particles.js';
 import { createBodyModel } from './bodyModel.js';
+import { createRiggedModel } from './riggedModel.js';
 import { createMoire, MOIRE_PX } from './moire.js';
 
 /** @typedef {'solid' | 'particle' | 'moire'} LookMode */
+/** @typedef {'male' | 'xbot' | 'michelle'} BodyKey */
+/** body models: male_body.glb (bound to our skeleton here) or a rigged Mixamo character */
+export const BODY_URL = { male: 'male_body.glb', xbot: 'models/xbot.glb', michelle: 'models/michelle.glb' };
 
 /**
  * @param {{ canvas: HTMLCanvasElement, act: number[], modelUrl?: string, onMode?: (m: LookMode, dark: boolean) => void }} o
@@ -43,6 +47,10 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
   const particles = createParticles({ scene, PU, poser });
   Mesh.points = particles.points; Mesh.motes = particles.motes;
   const model = createBodyModel({ scene, U, poser, particles });
+  /** @type {Record<string, any>} */
+  const bodies = { male: model };
+  let want = 'male', shown = null;                       // chosen body, and the one on screen (a loaded one; null = built-in)
+  const fingK = { L: [0, 0, 0, 0, 0], R: [0, 0, 0, 0, 0] };
   const moire = createMoire({ scene, U, PU });
   Mesh.marks = moire.marks;
 
@@ -96,9 +104,13 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
   function mode(m) {
     if (m === 'particle' && !holoOn) reform(2.4);
     curMode = m; holoOn = m === 'particle'; moireOn = m === 'moire';
-    const meshOn = model.loaded, dark = holoOn || moireOn;   // the loaded human model replaces the built-in solid shape
+    const cur = shown && bodies[shown], meshOn = !!cur, dark = holoOn || moireOn;   // a loaded model replaces the built-in solid shape
     Mesh.body.visible = Mesh.head.visible = !holoOn && !meshOn; Mesh.points.visible = Mesh.motes.visible = holoOn;
-    if (meshOn) { model.solid.visible = !holoOn; model.solid.material = moireOn ? moire.mat : model.meshMat; }
+    for (const k in bodies) {
+      const b = bodies[k]; if (!b.loaded) continue;
+      b.solid.visible = b === cur && !holoOn; b.solidLine.visible = false;
+      if (b === cur) b.solid.material = moireOn ? moire.mat : model.meshMat;
+    }
     Mesh.marks.visible = moireOn && meshOn;
     floor.material.color.set(dark ? '#BDE6EA' : '#1D231E'); floor.material.blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending; floor.material.needsUpdate = true;
     shadowMesh.material.color.set(dark ? '#BDE6EA' : '#1D231E'); shadowMesh.material.opacity = dark ? 0.07 : 0.13;
@@ -108,7 +120,8 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
   /** per-frame uniforms and skinning; poses the body first, so place() can put the dumbbells in its hands */
   function look({ sol, shade, line, oxy, beat, hr, spo2, smo2, now }) {
     U.uOn.value = shade ? 1 : 0; U.uLine.value = line ? 1 : 0; shadowMesh.visible = shade;
-    if (model.loaded) model.solidLine.visible = line && !holoOn && !moireOn;
+    const cur = shown && bodies[shown];
+    if (cur) cur.solidLine.visible = line && !holoOn && !moireOn;
     moire.MU.uSp.value = MOIRE_PX * U.uPx.value;          // lattice pitch in device pixels, as on the globe
     PU.uTime.value = (now / 1000) % 1000; PU.uPR.value = glPR;
     if (formT0 < 0) formT0 = now;
@@ -124,10 +137,17 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
     poser.clearPosed();
     const gdt = Math.min(0.1, Math.max(0, (now - gripT) / 1000)); gripT = now;   // hands close around the dumbbells over ~0.2 s
     // each hand: closed around a dumbbell, or as closed as the tracked hand (camera hand tracking)
-    for (const n of ['L', 'R']) gripK[n] += (Math.max(sol && sol.prop ? 1 : 0, (sol && sol.grip && sol.grip[n]) || 0) - gripK[n]) * (1 - Math.exp(-gdt / 0.08));
-    if (sol && holoOn) particles.skin(sol.P, sol.D, (now / 1000) % 1000, 0.25 + hr / 60 * 0.2, gripK);
-    else if (sol && model.loaded) model.skin(sol.P, sol.D, gripK);
-    if (sol && moireOn) moire.place(sol.P, sol.D);
+    // each finger of a rigged model: the grip, or its own curl while hand tracking sees it
+    const ga = 1 - Math.exp(-gdt / 0.08);
+    for (const n of ['L', 'R']) {
+      const held = sol && sol.prop ? 1 : 0, g = (sol && sol.grip && sol.grip[n]) || 0, fc = sol && sol.fingers && sol.fingers[n];
+      gripK[n] += (Math.max(held, g) - gripK[n]) * ga;
+      for (let f = 0; f < 5; f++) fingK[n][f] += (Math.max(held, fc ? fc[f] : g) - fingK[n][f]) * ga;
+    }
+    const time = (now / 1000) % 1000, flow = 0.25 + hr / 60 * 0.2;
+    if (sol && cur) cur.frame(sol.P, sol.D, cur === model ? gripK : fingK, holoOn, time, flow);
+    else if (sol && holoOn) particles.skin(sol.P, sol.D, time, flow, gripK);
+    if (sol && moireOn) moire.place(mapP(sol.P), sol.D);
   }
 
   // overlay size in device pixels (the 2D canvas over the stage), and the GL pixel ratio cap: the ray-marched body
@@ -169,7 +189,8 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
     for (const n of ['L', 'R']) {
       const db = Mesh['db' + n]; db.visible = s.prop;
       if (!s.prop) continue;
-      if (!poser.gripOf(n, db.position, tv)) { db.position.copy(T(P['hand' + n])); tv.set(D.side.x, D.side.y, D.side.z); }
+      const cur = shown && bodies[shown];
+      if (!(cur ? cur.gripOf(n, db.position, tv) : poser.gripOf(n, db.position, tv))) { db.position.copy(T(P['hand' + n])); tv.set(D.side.x, D.side.y, D.side.z); }
       db.quaternion.setFromUnitVectors(Yv, tv);
     }
     shadowMesh.position.set(P.pel.x, 0.001, P.pel.z);
@@ -192,10 +213,34 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
   /** world point → overlay pixel (device pixels of the 2D canvas) */
   function project(p) { pv.set(p.x, p.y, p.z).project(camera); return { x: (pv.x + 1) / 2 * W, y: (1 - pv.y) / 2 * H }; }
 
+  /** the skeleton's joints where the shown model has them (overlay, markers); unchanged for male_body.glb */
+  function mapP(P) { const cur = shown && bodies[shown]; return cur && cur.mapP && P ? cur.mapP(P) : P; }
+  /** show the chosen body if it has loaded, else male_body.glb if that has, else the built-in shapes */
+  function refresh() {
+    shown = bodies[want] && bodies[want].loaded ? want : model.loaded ? 'male' : null;
+    if (shown) bodies[shown].activate(); else particles.use(particles.procedural);
+    mode(curMode);
+  }
+  /**
+   * switch the body model; a rigged one is loaded the first time (the current body stays until it is ready)
+   * @param {BodyKey} key @returns {Promise<void>}
+   */
+  async function setBody(key) {
+    if (!(key in BODY_URL)) key = 'male';
+    want = key;
+    if (!bodies[key]) bodies[key] = createRiggedModel({ scene, meshMat: model.meshMat, lineMat: model.meshLineMat, particles, PU });
+    const b = bodies[key];
+    if (!b.loaded && b !== model) {               // male_body.glb is loading from the start anyway
+      if (!b.loading) b.loading = b.load(import.meta.env.BASE_URL + BODY_URL[key]).finally(() => { b.loading = null; });
+      try { await b.loading; } catch (e) { console.warn(BODY_URL[key] + ' not loaded', e); }
+    }
+    if (want === key) refresh();
+  }
+
   mode('particle');
-  model.load(modelUrl).then(() => mode(curMode)).catch(e => console.warn('male_body.glb not loaded; using the built-in body shape', e));   // switch the solid / moiré view over to the mesh
+  model.load(modelUrl).then(refresh).catch(e => console.warn('male_body.glb not loaded; using the built-in body shape', e));   // switch the solid / moiré view over to the mesh
   return {
-    color, mode, reform, resize, watchPerf, render, project,
+    color, mode, reform, resize, watchPerf, render, project, setBody, mapP,
     /** @returns {LookMode} */
     get current() { return curMode; },
     /** the stage is dark (particle and moiré views) */
