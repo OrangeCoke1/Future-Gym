@@ -101,3 +101,7 @@
 ## [2026-10-31 17:30] Rigged body models (Xbot, Michelle) with a panel switch
 - **Goal**: Use the user's two rigged Mixamo models (with finger bones) as switchable bodies, fingers driven by hand tracking.
 - **Changes**: `public/models/xbot.glb`, `public/models/michelle.glb` (new); `src/render/glbSkin.js` (new, `parseSkinnedGlb`); `src/render/riggedModel.js` (new, `createRiggedModel`); `src/render/stage.js` (`BODY_URL`, `setBody`, `mapP`, per-finger smoothing); `src/render/particles.js` (`makeBody`, `use`, `procedural`); `src/render/bodyModel.js` (`activate`, `frame`, `gripOf`); `src/pose/hands.js` (`curlOf`, `curl`); `src/pose/camera.js` (`sol.fingers`); `src/core/skeleton.js` (Solved typedef); `src/engine/engine.js` (`setBody`, overlay via `mapP`); `src/stores/settings.js` (`body`); `src/components/drawer/DisplayOptions.vue`, `DataNotes.vue`; `src/App.vue`; `src/i18n/messages.js`; `CLAUDE.md`.
+
+## [2026-10-31 17:20] Camera figure stands upright (tilt levelling)
+- **Goal**: A tilted camera made the whole figure lean; level the pose so the body is perpendicular to the floor.
+- **Changes**: `src/pose/camera.js` (`measureVertical`, `levelRot`, `levelOf`, `cam.vert`, `camSolve` levelling); `CLAUDE.md`.
