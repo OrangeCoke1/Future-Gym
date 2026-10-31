@@ -18,7 +18,7 @@ npm run preview
 npm run lint      # ESLint (flat config, eslint-plugin-vue recommended)
 ```
 
-The page must be served over `http://localhost`, because camera access and MediaPipe don't work from `file://`. On Windows, `start.bat` builds `dist/` if it is missing (this needs Node), then runs `serve.ps1`, a no-dependency static server whose `-Root` defaults to `dist`. Heart-rate input can be simulated in the console with `stickman.setHeartRate(140)` (`null` disconnects it; it falls back to estimates after 5 s). The camera prediction lead is tuned with `stickman.setCamLead(80)` (ms, `0` = off, max 150).
+The page must be served over `http://localhost`, because camera access and MediaPipe don't work from `file://`. On Windows, `start.bat` builds `dist/` if it is missing (this needs Node), then runs `serve.ps1`, a no-dependency static server whose `-Root` defaults to `dist`. Heart-rate input can be simulated in the console with `stickman.setHeartRate(140)` (`null` disconnects it; it falls back to estimates after 5 s). Camera following (One Euro `minCut` / `beta` and the prediction lead) is tuned in 面板 → 摄像头跟随 (`CameraTuning.vue`, data in `src/pose/camTune.js`, persisted as `stick.camTune`); `stickman.setCamLead(ms)` tries a lead from the console without saving it.
 
 The baked poster figures are regenerated with `powershell -ExecutionPolicy Bypass -File poster\bake-figure-a.ps1` (add `-Page bake-figures.html -Out figures.js -Var FIGS` for `figures.js`). The server must be running and Edge or Chrome installed. `poster/figure-a.js` and `poster/figures.js` are generated, so don't edit them by hand. `poster/` is a separate static site with classic scripts and is not bundled by Vite.
 

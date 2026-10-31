@@ -35,3 +35,8 @@
 .legend li{display:flex;align-items:baseline;gap:10px}
 .legend a{color:inherit}
 .legend .est{margin:0;flex:none;min-width:5.5em;opacity:1;color:var(--ink)}
+/* panel · camera following sliders */
+.ctune{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.ctune-h{display:flex;justify-content:space-between;align-items:baseline}
+.ctune-h b{font-weight:600;font-variant-numeric:tabular-nums}
+.ctune input{width:100%;accent-color:var(--ink)}

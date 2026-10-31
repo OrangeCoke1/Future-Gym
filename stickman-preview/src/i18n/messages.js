@@ -72,6 +72,13 @@ export const I18N = {
   '显示': ['表示', 'Display'], '小人': ['フィギュア', 'Figure'], '小人的显示方式': ['フィギュアの表示方法', 'Figure style'],
   '粒子全息': ['粒子ホログラム', 'Particle hologram'], '实体': ['ソリッド', 'Solid'], '摩尔纹': ['モアレ', 'Moiré'], '光影': ['陰影', 'Shading'], '轮廓': ['輪郭', 'Outline'],
   '肌群': ['筋群', 'Muscles'], '血氧': ['血中酸素', 'Blood O₂'], '角度': ['角度', 'Angle'], '关键点': ['キーポイント', 'Keypoints'],
+  // panel · camera following
+  '摄像头跟随': ['カメラ追従', 'Camera following'], '跟随预设': ['追従プリセット', 'Following presets'],
+  '稳定': ['安定', 'Steady'], '平衡': ['バランス', 'Balanced'], '跟手': ['機敏', 'Responsive'], '恢复默认': ['初期値に戻す', 'Reset to default'],
+  '防抖': ['ブレ抑制', 'Jitter filter'], '速度响应': ['速度応答', 'Speed response'], '预测提前量': ['先読み量', 'Prediction lead'],
+  '越小越稳，站着不动时抖就调小': ['小さいほど安定。静止時に震えるなら下げる', 'Lower is steadier; lower it if the figure shakes while you stand still'],
+  '越大动起来越跟手，动作拖后就调大': ['大きいほど動きに追従。遅れるなら上げる', 'Higher follows fast moves closer; raise it if the figure trails behind'],
+  '越大越超前，动作停下时冲过头就调小': ['大きいほど先読み。止まった時に行き過ぎるなら下げる', 'Higher predicts further ahead; lower it if the figure overshoots when you stop'],
   '重置布局': ['レイアウトをリセット', 'Reset layout'], '拖动卡片之间的空隙可以调整大小': ['カードの間をドラッグしてサイズを変更できます', 'Drag the gaps between cards to resize them'],
   '拖动调整两侧卡片的大小': ['ドラッグして両側のカードのサイズを変更', 'Drag to resize the cards on either side'],
   '小人颜色': ['フィギュアの色', 'Figure colour'], '墨色': ['墨色', 'Ink'], '橙': ['オレンジ', 'Orange'], '橄榄绿': ['オリーブ', 'Olive'], '灰蓝': ['グレーブルー', 'Grey blue'], '白': ['白', 'White'],

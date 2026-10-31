@@ -31,8 +31,9 @@ const { engine } = provideEngine({ profile: useProfile().profile, opts: settings
 useDocumentLang();
 useLayoutVars();
 const { t } = useI18n();
-// entry point for a real heart-rate source (e.g. a Bluetooth strap): stickman.setHeartRate(bpm) on every reading
-// camera prediction lead for tuning on a real webcam: stickman.setCamLead(ms), 0 = off, default 80
+engine.setCamTune(settings.camTune);                     // the persisted camera-following tuning (面板 → 摄像头跟随)
+// entry point for a real heart-rate source (e.g. a Bluetooth strap): stickman.setHeartRate(bpm) on every reading;
+// stickman.setCamLead(ms) tries a prediction lead without saving it (0 = off, the panel's slider saves)
 window.stickman = { setHeartRate: bpm => engine.setHeartRate(bpm), setCamLead: ms => engine.setCamLead(ms) };
 
 const drawerOpen = ref(false), topBar = ref(null);

@@ -15,6 +15,7 @@ import { drawOverlay } from '../render/overlay.js';
 import { ruleOf, showOf, angleOf, updateRep, bump } from './reps.js';
 import { createFit, fitKeyOf, isFitAction } from '../pose/fit.js';
 import { camSolve, camPredict } from '../pose/camera.js';
+import { sanitizeTune } from '../pose/camTune.js';
 import { phaseTable, phaseAt, bothSides } from './phaseSync.js';
 import { createCamera } from './camera.js';
 
@@ -40,9 +41,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     // as an animation, one full rep for every rep the person completes (jog: half a stride per step)
     camView, mirror: true, camStat: null, camAspect: null,  // camStat = [Chinese text, ...args] or null; camAspect = preview aspect, null = hidden
     RP: { act: null, t: 0, q: 0 }, fitAct: null, fitEnd: null,
-    // camera prediction lead (s): joints are extrapolated this far past the moment they are drawn (0 = off);
     // sync = the action whose scripted rep the replay view is phase-locking to the person's live angle, or null
-    camLead: 0.08, sync: null, syncT: 0,
+    sync: null, syncT: 0,
     run: playing, rate: 1,                              // what the counters and estimates follow: demo playback, or live tracking
     uiTick: true, uiT: 0, facing: { key: '正面', deg: 0 }, met: ACT.squat.met, real: null,
     mu: createMuscles(), rows: [], recovery: 0, load: createLoad(), M: createMetrics(), bio: createBio(), therm: createTherm(),
@@ -112,8 +112,11 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     if (ACT[S.action].rep.type === 'none') S.stateZh = ACT[S.action].rep.label;
   }
   function setCamView(v) { S.camView = v === 'replay' ? 'replay' : 'live'; S.blendFrom = S.curQ; S.blendT = 0; }
-  /** camera prediction lead in ms (0 = off, at most 150) */
-  function setCamLead(ms) { const v = Number(ms); S.camLead = Number.isFinite(v) ? clamp(v, 0, 150) / 1000 : 0.08; }
+  /** camera following: One Euro minCut / beta and prediction lead (ms); fields left out or invalid keep their value
+   * @param {Partial<import('../pose/camTune.js').CamTune>} p */
+  function setCamTune(p) { Object.assign(camera.pose.tune, sanitizeTune(p, camera.pose.tune)); }
+  /** prediction lead (s) for this frame */
+  const lead = () => camera.pose.tune.lead / 1000;
   function setMirror(v) { S.mirror = !!v; camera.setMirror(S.mirror); S.phase = null; S.lastLow = null; }
 
   /** world-front view presets (radians); the camera turns the short way round */
@@ -161,7 +164,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     const sk = replay && S.camLive ? RP.act || S.action : null, tab = sk ? phaseTable(sk) : null;
     if ((tab ? sk : null) !== S.sync) {
       S.blendFrom = S.curQ; S.blendT = 0;
-      if (tab) S.syncT = phaseAt(tab, bothSides(camSolve(camera.pose, sk, camPredict(camera.pose, now, S.camLead)).P, ACT[sk].show));
+      if (tab) S.syncT = phaseAt(tab, bothSides(camSolve(camera.pose, sk, camPredict(camera.pose, now, lead())).P, ACT[sk].show));
       else RP.t = 0;                                      // back to the queued replay: from the start of a rep, not mid-squat
       S.sync = tab ? sk : null;
     }
@@ -169,9 +172,9 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     let sol;
     if (S.camLive && !replay) {
       ground.k = 1 - Math.exp(-dt * 20);
-      sol = camSolve(camera.pose, S.action, camPredict(camera.pose, now, S.camLead));
+      sol = camSolve(camera.pose, S.action, camPredict(camera.pose, now, lead()));
     } else if (S.sync) {
-      const A2 = ACT[S.sync], ang = bothSides(camSolve(camera.pose, S.sync, camPredict(camera.pose, now, S.camLead)).P, A2.show);
+      const A2 = ACT[S.sync], ang = bothSides(camSolve(camera.pose, S.sync, camPredict(camera.pose, now, lead())).P, A2.show);
       S.syncT += (phaseAt(tab, ang) - S.syncT) * (1 - Math.exp(-dt * 30));
       RP.q = 0;                                           // reps are being shown as they happen: nothing to catch up on
       if (S.blendT < 1) S.blendT = Math.min(1, S.blendT + dt / 0.15);
@@ -232,7 +235,9 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   }
 
   return {
-    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamLead,
+    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune,
+    /** console tuning shortcut: prediction lead in ms */
+    setCamLead(ms) { setCamTune({ lead: Number(ms) }); },
     /** the camera preview's video element and 2D check canvas */
     attachCamera(video, canvas) { camera.attach(video, canvas); },
     setPlaying(v) { S.playing = !!v; },
