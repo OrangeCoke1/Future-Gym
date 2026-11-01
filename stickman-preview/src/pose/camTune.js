@@ -2,14 +2,16 @@
 // ahead joints are predicted, and whether the legs follow the camera. Plain data and a sanitiser, shared by the camera
 // pose, the engine and the settings store.
 
-/** @typedef {'auto' | 'stand'} LegMode  auto = follow the camera where the legs are seen well; stand = always a normal standing pose */
+/** @typedef {'normal' | 'auto' | 'stand'} LegMode  normal = the whole body follows the camera (unseen legs hang straight under the
+ *   tilted trunk); auto = legs follow where seen well, unseen legs and the pelvis stay standing upright and only the body
+ *   above the waist moves; stand = always that standing lower body */
 /** @typedef {{ minCut: number, beta: number, lead: number, legs: LegMode }} CamTune
  *   One Euro cutoff at rest (Hz) and its rise with speed, prediction lead (ms), leg mode */
 /** @type {Readonly<CamTune>} */
 export const CAM_TUNE_DEFAULT = Object.freeze({ minCut: 1.5, beta: 6, lead: 60, legs: 'auto' });
 /** @type {Record<'minCut' | 'beta' | 'lead', [number, number]>} allowed range of each numeric field */
 export const CAM_TUNE_RANGE = Object.freeze({ minCut: [0.5, 5], beta: [0, 20], lead: [0, 150] });
-export const LEG_MODES = /** @type {const} */ (['auto', 'stand']);
+export const LEG_MODES = /** @type {const} */ (['normal', 'auto', 'stand']);
 /** the panel's presets (numeric fields only): 稳定 = least jitter, 跟手 = least lag */
 export const CAM_TUNE_PRESETS = [
   ['稳定', { minCut: 0.8, beta: 3, lead: 0 }],

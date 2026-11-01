@@ -278,8 +278,12 @@ export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
   // body frame: the smoothed one from camIngest (facing with a dead-band), or straight from the joints before the first frame
   const pelJ = mul(add(J.hipL, J.hipR), 0.5);
   const up = camUp || dir(pelJ, shJ, UP), side = perp(camFace || sub(J.shL, J.shR), up, V(1, 0, 0)), bodyF = cross(side, up);
-  const hipAx = perp(dir(J.hipR, J.hipL, side), up, side);
-  P.pel = V(0, 0, 0); P.pelBot = mul(up, 0.02); P.chest = mul(up, B.torso);
+  // lower body ('auto' / 'stand' leg modes): while the legs are not seen it stays standing upright (only the trunk above the waist follows the
+  // person); as the legs come into view the pelvis takes the trunk's tilt again
+  const lw = cam.tune.legs === 'normal' ? 1 : Math.min(legConf(cam, 'L'), legConf(cam, 'R'));
+  const upL = lw >= 1 ? up : nlerp(UP, up, lw), sideL = perp(side, upL, V(1, 0, 0)), bodyFL = cross(sideL, upL);
+  const hipAx = perp(dir(J.hipR, J.hipL, sideL), upL, sideL);
+  P.pel = V(0, 0, 0); P.pelBot = mul(upL, 0.02); P.chest = mul(up, B.torso);
   for (const [n, s] of [['L', 1], ['R', -1]]) {
     const sh = add(P.chest, add(mul(side, s * B.shW), mul(up, -0.03)));
     const u = dir(J['sh' + n], J['el' + n], DOWN), lo = dir(J['el' + n], J['wr' + n], u);
@@ -289,17 +293,17 @@ export function camSolve(cam, prop, J = cam.J, now = performance.now()) {
     const hs = cam.hands[n], ax = rollAxis(hs, lo, now);
     P['hand' + n] = add(wr, mul(lo, 0.1)); P['thumb' + n] = add(P['hand' + n], mul(ax || perp(bodyF, lo, up), 0.055));
     if (handLive(hs, now)) { grip[n] = hs.grip; fingers[n] = hs.curl; }
-    const { tu, sl } = legDirs(J, n, s, up, side, bodyF, legConf(cam, n));
+    const { tu, sl } = legDirs(J, n, s, upL, sideL, bodyFL, legConf(cam, n));
     const hip = mul(hipAx, s * B.hipW), kn = add(hip, mul(tu, B.thigh)), an = add(kn, mul(sl, B.shin));
     P['hip' + n] = hip; P['kn' + n] = kn; P['an' + n] = an;
-    const fd = footDir(cam, J, n, bodyF, nrm(add(bodyF, mul(side, s * 0.15)))), sole = perp(DOWN, fd, BACK);
+    const fd = footDir(cam, J, n, bodyFL, nrm(add(bodyFL, mul(sideL, s * 0.15)))), sole = perp(DOWN, fd, BACK);
     P['heel' + n] = add(add(an, mul(fd, -0.042)), mul(sole, 0.058));
     P['toe' + n] = add(add(an, mul(fd, 0.15)), mul(sole, 0.066));
   }
   const earM = mul(add(J.earL, J.earR), 0.5), earAx = dir(J.earR, J.earL, side);
   const hf = perp(sub(J.nose, earM), earAx, bodyF), hu = cross(hf, earAx);
   P.head = add(P.chest, mul(nrm(add(mul(dir(shJ, earM, up), 0.6), mul(up, 0.4))), B.headUp));
-  D.hu = hu; D.hf = hf; D.bodyF = bodyF; D.side = side; D.pelF = cross(hipAx, up);
+  D.hu = hu; D.hf = hf; D.bodyF = bodyF; D.side = side; D.pelF = cross(hipAx, upL); D.pelU = upL;
   const minB = Math.min(P.heelL.y, P.toeL.y, P.heelR.y, P.toeR.y) - B.footR;      // world landmarks are hip-centred: stand the figure on the floor
   const lift = V(0, -settleGround(minB), 0);
   for (const k in P) P[k] = add(P[k], lift);

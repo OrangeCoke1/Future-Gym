@@ -8,7 +8,8 @@ import { useSettings } from '../../stores/settings.js';
 import { CAM_TUNE_PRESETS, CAM_TUNE_RANGE } from '../../pose/camTune.js';
 
 const MODELS = [['heavy', '高精度'], ['full', '标准']];
-const LEGS = [['auto', '自动'], ['stand', '固定站姿']];
+const LEGS = [['normal', '正常'], ['auto', '自动'], ['stand', '固定站姿']];
+const LEG_HINT = { normal: '全身都跟着你动，看不到腿时腿跟着上身一起倾斜', auto: '看不到下半身时腿和骨盆站着不动，只有腰以上跟着你动', stand: '腿和骨盆一直保持站姿，只有腰以上跟着你动' };
 
 const { t } = useI18n();
 const { engine } = useEngine();
@@ -123,7 +124,7 @@ const show = (k, v) => (k === 'minCut' ? v.toFixed(1) : String(Math.round(v * 10
       </div>
     </div>
     <p class="note">
-      {{ tune.legs === 'stand' ? t('腿保持站姿，只有上半身跟着你动') : t('腿部看不清时自动回到站姿，膝盖不会反折') }}
+      {{ t(LEG_HINT[tune.legs]) }}
     </p>
     <label
       v-for="[k, name, step, unit, hint] in SLIDERS"
