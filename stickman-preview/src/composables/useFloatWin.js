@@ -1,4 +1,4 @@
-// Floating window: drag a handle to move it, drag the corner to resize it. The window keeps its aspect ratio
+// Floating window: drag a handle to move it, drag any corner to resize it (the opposite corner stays put). The window keeps its aspect ratio
 // (height = width / aspect) and is clamped inside its bounds: the positioned parent, or the viewport (position: fixed).
 import { onMounted, onBeforeUnmount } from 'vue';
 
@@ -23,44 +23,55 @@ export function useFloatWin(el, rect, aspect, commit, place, o = {}) {
     return p ? { w: p.clientWidth, h: p.clientHeight } : null;
   };
   const ar = () => { const a = Number(aspect()); return a > 0 ? a : 4 / 3; };
+  /** title bar height (the first child), read directly: the window's own height lags a size change by a render */
+  const headH = () => { const h = el.value && el.value.firstElementChild; return h ? h.offsetHeight : 0; };
 
   /** keep the window inside its bounds */
   function clamp() {
     const b = box();
     if (!b || !b.w || !b.h || !el.value.offsetHeight) return;    // parent or window not laid out (hidden)
     if (rect.x < 0) Object.assign(rect, place(b.w, b.h));
-    const a = ar(), head = el.value.offsetHeight - rect.w / a;   // title bar height
-    const maxW = Math.max(WIN_MIN, Math.min(b.w - 8, (b.h - 8 - head) * a));
+    const a = ar(), head = headH();
+    const maxW = Math.max(WIN_MIN, Math.min(b.w - 8, (b.h - 16 - head) * a));
     rect.w = Math.round(Math.min(Math.max(rect.w, WIN_MIN), maxW));
     const h = rect.w / a + head;
     rect.x = Math.round(Math.min(Math.max(rect.x, 0), Math.max(0, b.w - rect.w)));
     rect.y = Math.round(Math.min(Math.max(rect.y, 0), Math.max(0, b.h - h)));
   }
 
-  /** @param {PointerEvent} e @param {'move'|'size'} kind */
+  /** @param {PointerEvent} e @param {'move'|'size'|'se'|'sw'|'ne'|'nw'} kind  size = the bottom-right corner */
   function start(e, kind) {
     if (e.button !== 0) return;
     e.preventDefault(); e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    op = { kind, px: e.clientX, py: e.clientY, x: rect.x, y: rect.y, w: rect.w };
+    op = { kind: kind === 'size' ? 'se' : kind, px: e.clientX, py: e.clientY, x: rect.x, y: rect.y, w: rect.w, h: rect.w / ar() + headH() };
   }
   /** @param {PointerEvent} e */
   function move(e) {
     if (!op) return;
     const dx = e.clientX - op.px, dy = e.clientY - op.py;
-    if (op.kind === 'move') { rect.x = Math.max(0, op.x + dx); rect.y = Math.max(0, op.y + dy); }   // x < 0 would mean "not placed"
-    else rect.w = op.w + Math.max(dx, dy * ar());              // corner: follow whichever axis moved more
+    if (op.kind === 'move') { rect.x = Math.max(0, op.x + dx); rect.y = Math.max(0, op.y + dy); clamp(); return; }   // x < 0 would mean "not placed"
+    // corner: grow by whichever axis moved more (the aspect ratio is kept), the opposite corner stays where it was
+    const sx = op.kind.includes('e') ? 1 : -1, sy = op.kind.includes('s') ? 1 : -1, a = ar(), b = box();
+    const head = headH(), maxW = b ? Math.max(WIN_MIN, Math.min(b.w - 8, (b.h - 16 - head) * a)) : Infinity;
+    const w = Math.round(Math.min(Math.max(op.w + Math.max(sx * dx, sy * dy * a), WIN_MIN), maxW));
+    rect.w = w;
+    rect.x = Math.max(0, sx > 0 ? op.x : op.x + op.w - w);
+    rect.y = Math.max(0, sy > 0 ? op.y : op.y + op.h - (w / a + head));
     clamp();
   }
   function end() { if (!op) return; op = null; commit(); }
 
-  /** small ↔ large (half the parent width) */
+  /** cycle small → large (half the bounds' width) → as large as fits → small, keeping the right edge where it is */
   function toggleSize() {
     const b = box();
-    if (!b) return;
-    const big = Math.round(b.w * 0.5), right = rect.x + rect.w;   // keep the right edge where it is
-    rect.w = rect.w < (big + WIN_SMALL) / 2 ? big : WIN_SMALL;
-    rect.x = right - rect.w;
+    if (!b || !el.value) return;
+    const a = ar(), head = headH();
+    const max = Math.round(Math.max(WIN_MIN, Math.min(b.w - 16, (b.h - 16 - head) * a))), big = Math.min(max, Math.round(b.w * 0.5));
+    const right = rect.x + rect.w;
+    rect.w = rect.w < big - 20 ? big : rect.w < max - 20 ? max : WIN_SMALL;
+    rect.x = Math.max(0, right - rect.w);
+    if (rect.w === max) { rect.x = Math.round((b.w - rect.w) / 2); rect.y = 8; }
     clamp(); commit();
   }
   /** keyboard: arrows move, Shift+arrows resize */
@@ -80,5 +91,10 @@ export function useFloatWin(el, rect, aspect, commit, place, o = {}) {
   });
   onBeforeUnmount(() => { if (ro) ro.disconnect(); if (o.viewport) removeEventListener('resize', clamp); });
 
-  return { start, move, end, toggleSize, key, clamp };
+  /** as large as fits in the bounds (used to tell the size button what comes next) */
+  function maxW() {
+    const b = box(); if (!b || !el.value) return Infinity;
+    const a = ar(); return Math.max(WIN_MIN, Math.min(b.w - 16, (b.h - 16 - headH()) * a));
+  }
+  return { start, move, end, toggleSize, key, clamp, maxW };
 }

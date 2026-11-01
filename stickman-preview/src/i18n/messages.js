@@ -40,7 +40,7 @@ export const I18N = {
   '小人动画，拖动旋转视角': ['フィギュアのアニメーション。ドラッグで視点を回転', 'Figure animation; drag to rotate the view'],
   '关节角度刻度：左右两侧的当前角度和计数阈值': ['関節角度スケール：左右の現在角度とカウントのしきい値', 'Joint angle scale: current angle on each side and the counting thresholds'],
   '摄像头画面': ['カメラ映像', 'Camera view'], '放大': ['拡大', 'Enlarge'], '缩小': ['縮小', 'Shrink'],
-  '拖动移动，拖右下角调整大小，双击切换大小': ['ドラッグで移動、右下をドラッグでサイズ変更、ダブルクリックで大小切替', 'Drag to move, drag the bottom-right corner to resize, double-click to toggle size'],
+  '拖动移动，拖四个角调整大小，双击切换大小': ['ドラッグで移動、四隅をドラッグでサイズ変更、ダブルクリックで大小切替', 'Drag to move, drag any corner to resize, double-click to change size'],
   '摄像头画面浮窗，方向键移动，Shift+方向键调整大小': ['カメラ映像のフローティングウィンドウ。矢印キーで移動、Shift+矢印キーでサイズ変更', 'Floating camera window; arrow keys move it, Shift+arrow keys resize it'],
   '体表热量': ['体表温度', 'Skin heat'], '模型': ['モデル', 'Model'], '人体模型': ['人体モデル', 'Body model'],
   '正面摊开的人体热成像图，越亮表示越热': ['正面から広げた人体のサーモグラフィ。明るいほど高温', 'Front-view thermal map of the body laid out flat; brighter is hotter'],

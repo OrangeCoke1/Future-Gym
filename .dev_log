@@ -113,3 +113,7 @@
 ## [2026-11-01 05:50] Lower body stays standing when the legs are not seen; 正常 leg mode
 - **Goal**: With the legs out of view only the body above the waist follows the person; a switch keeps the old whole-body behaviour.
 - **Changes**: `src/pose/camera.js` (lower-body frame `upL`, `D.pelU`); `src/pose/camTune.js` (`LEG_MODES` normal / auto / stand); `src/render/poser.js`, `src/render/riggedModel.js` (pelvis from `D.pelU`); `src/core/skeleton.js` (Frames typedef); `src/components/drawer/CameraTuning.vue`; `src/i18n/messages.js`; `CLAUDE.md`.
+
+## [2026-11-01 06:00] Camera window: resize from any corner, up to the whole page
+- **Goal**: Let the camera window grow much larger and be resized freely.
+- **Changes**: `src/composables/useFloatWin.js` (corner kinds, `headH`, `maxW`, 3-step `toggleSize`); `src/components/stage/CamPreview.vue` (four corner handles); `src/styles/stage.css` (`.cam-rs[data-c]`); `src/i18n/messages.js`.

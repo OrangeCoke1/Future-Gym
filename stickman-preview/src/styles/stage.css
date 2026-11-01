@@ -67,5 +67,9 @@
 .cam-box{position:relative;width:100%;aspect-ratio:4/3;background:#05070B}
 .cam-box video,.cam-box canvas{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
 .cam-box.mir video,.cam-box.mir canvas{transform:scaleX(-1)}
-.cam-rs{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;touch-action:none;
+.cam-rs{position:absolute;width:22px;height:22px;touch-action:none;z-index:2}
+.cam-rs[data-c=se]{right:0;bottom:0;cursor:nwse-resize;
   background:linear-gradient(135deg,transparent 50%,rgba(241,240,226,.75) 50% 58%,transparent 58% 70%,rgba(241,240,226,.75) 70% 78%,transparent 78%)}
+.cam-rs[data-c=sw]{left:0;bottom:0;cursor:nesw-resize}
+.cam-rs[data-c=ne]{right:28px;top:0;cursor:nesw-resize}
+.cam-rs[data-c=nw]{left:0;top:0;cursor:nwse-resize}
