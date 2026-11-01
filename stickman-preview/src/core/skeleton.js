@@ -6,7 +6,7 @@ import { V, add, sub, mul, dot, len, nrm, rotX, rotY, rotZ, lerp, sine, clamp, T
 /** @typedef {{ yaw: number, lean: number, twist: number, side: number, nod: number, tilt: number, jump: number, anchor: number, prop: number,
  *   armL: LimbParams, armR: LimbParams, legL: LimbParams, legR: LimbParams }} PoseQ */
 /** @typedef {Record<string, Vec3>} Joints  pel, chest, pelBot, head, sh/el/wr/hand/thumb L|R, hip/kn/an/heel/toe L|R */
-/** @typedef {{ hu: Vec3, hf: Vec3, bodyF: Vec3, side: Vec3, pelF: Vec3 }} Frames */
+/** @typedef {{ hu: Vec3, hf: Vec3, bodyF: Vec3, side: Vec3, pelF: Vec3, pelU?: Vec3 }} Frames  pelU = pelvis up when it differs from the trunk's (camera, legs not seen) */
 /** @typedef {{ P: Joints, D: Frames, prop?: boolean, grip?: { L: number, R: number }, fingers?: { L: number[] | null, R: number[] | null }, jump?: number }} Solved
  *  grip = tracked hand closure 0..1 (camera), fingers = tracked curl per finger (thumb … pinky), null when the hand is not seen */
 

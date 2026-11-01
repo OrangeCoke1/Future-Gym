@@ -109,3 +109,7 @@
 ## [2026-10-31 17:35] Rigged models: no hand flip at the top of a curl
 - **Goal**: The pinky side of the hand flipped up in the last frames of a curl (the thumb direction lines up with the forearm near 90° of elbow bend and then crosses).
 - **Changes**: `src/render/riggedModel.js` (hand role: blend towards the frame carried from the forearm by how far the thumb stands off, keep the thumb side continuous frame to frame).
+
+## [2026-11-01 05:50] Lower body stays standing when the legs are not seen; 正常 leg mode
+- **Goal**: With the legs out of view only the body above the waist follows the person; a switch keeps the old whole-body behaviour.
+- **Changes**: `src/pose/camera.js` (lower-body frame `upL`, `D.pelU`); `src/pose/camTune.js` (`LEG_MODES` normal / auto / stand); `src/render/poser.js`, `src/render/riggedModel.js` (pelvis from `D.pelU`); `src/core/skeleton.js` (Frames typedef); `src/components/drawer/CameraTuning.vue`; `src/i18n/messages.js`; `CLAUDE.md`.

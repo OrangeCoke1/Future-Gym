@@ -180,7 +180,7 @@ export function createRiggedModel({ scene, meshMat, lineMat, particles, PU }) {
   /** @param {{ L: number[], R: number[] }} curl per hand, per finger 0 (open) – 1 (curled) */
   function pose(P, D, curl) {
     const { order, roles, parent, R, Q, Pw, at, hand } = M;
-    basisQ(qPel, { x: P.chest.x - P.pelBot.x, y: P.chest.y - P.pelBot.y, z: P.chest.z - P.pelBot.z }, D.pelF || D.bodyF);
+    basisQ(qPel, D.pelU || { x: P.chest.x - P.pelBot.x, y: P.chest.y - P.pelBot.y, z: P.chest.z - P.pelBot.z }, D.pelF || D.bodyF);
     basisQ(qChe, { x: P.chest.x - P.pelBot.x, y: P.chest.y - P.pelBot.y, z: P.chest.z - P.pelBot.z }, D.bodyF);
     basisQ(qHead, D.hu, D.hf);
     for (const j of order) {

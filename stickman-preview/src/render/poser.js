@@ -56,7 +56,7 @@ export function createPoser() {
     const basisOf = (m, up, fw) => { const y = new THREE.Vector3(up.x, up.y, up.z).normalize(), z = new THREE.Vector3(fw.x, fw.y, fw.z); z.addScaledVector(y, -z.dot(y)).normalize(); m.makeBasis(new THREE.Vector3().crossVectors(y, z), y, z); };
     const up = sub(P.chest, P.pelBot);
     basisOf(R4[0], up, D.bodyF); _q.setFromRotationMatrix(R4[0]); qset(qChe, _q);
-    basisOf(pelM, up, D.pelF || D.bodyF); _q.setFromRotationMatrix(pelM); qset(qPel, _q);
+    basisOf(pelM, D.pelU || up, D.pelF || D.bodyF);   // pelvis upright when the camera does not see the legs _q.setFromRotationMatrix(pelM); qset(qPel, _q);
     basisOf(R4[1], D.hu, D.hf);
     for (let i = 2; i < SEG.length; i++) {           // limbs: shortest turn from where the parent frame would put the bone to where it is
       const pr = (i === 8 || i === 11) ? pelM : R4[PARENT[i]];               // legs hang from the pelvis, arms from the chest
