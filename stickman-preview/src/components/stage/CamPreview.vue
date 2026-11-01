@@ -1,12 +1,12 @@
 <script setup>
 // Camera preview: the video with the detected landmarks drawn over it (mirrored with the figure), in a floating window
-// over the whole page (teleported to <body>, position: fixed) — drag the title bar to move it, the corner to resize it,
-// double-click to toggle size. It first appears at the stage's bottom-right corner.
+// over the whole page (teleported to <body>, position: fixed) — drag the title bar to move it, any corner to resize it
+// (up to the whole browser window), double-click or the size button to step small → large → as large as fits. It first appears at the stage's bottom-right corner.
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useEngine } from '../../composables/useEngine.js';
 import { useSettings } from '../../stores/settings.js';
-import { useFloatWin, WIN_SMALL } from '../../composables/useFloatWin.js';
+import { useFloatWin } from '../../composables/useFloatWin.js';
 
 const { t } = useI18n();
 const { engine, live } = useEngine();
@@ -23,7 +23,9 @@ const place = (w, h) => {
 };
 const fw = useFloatWin(win, rect, () => live.camAspect, settings.saveCamWin, place, { viewport: true });
 const style = computed(() => ({ left: rect.x + 'px', top: rect.y + 'px', width: rect.w + 'px' }));
-const big = computed(() => rect.w > WIN_SMALL + 40);
+/** the size button shrinks once the window is about as large as fits */
+const big = computed(() => rect.w >= fw.maxW() - 24);
+const CORNERS = ['se', 'sw', 'ne', 'nw'];
 /** recognised gestures, by the person's own hand (the figure's sides are swapped in mirror view) */
 const gestures = computed(() => (live.handG || '').split('|').filter(Boolean).map(x => {
   const [n, g] = x.split(':'), own = live.mirror ? (n === 'L' ? 'R' : 'L') : n;
@@ -47,7 +49,7 @@ watch(() => [live.camAspect, rect.x < 0], () => nextTick(fw.clamp));
       <div
         class="cam-bar"
         tabindex="0"
-        :title="t('拖动移动，拖右下角调整大小，双击切换大小')"
+        :title="t('拖动移动，拖四个角调整大小，双击切换大小')"
         :aria-label="t('摄像头画面浮窗，方向键移动，Shift+方向键调整大小')"
         @pointerdown="fw.start($event, 'move')"
         @pointermove="fw.move"
@@ -88,9 +90,12 @@ watch(() => [live.camAspect, rect.x < 0], () => nextTick(fw.clamp));
         />
       </div>
       <span
+        v-for="c in CORNERS"
+        :key="c"
         class="cam-rs"
+        :data-c="c"
         aria-hidden="true"
-        @pointerdown="fw.start($event, 'size')"
+        @pointerdown="fw.start($event, c)"
         @pointermove="fw.move"
         @pointerup="fw.end"
         @pointercancel="fw.end"
