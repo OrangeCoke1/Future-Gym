@@ -39,6 +39,19 @@ npm run dev      # 启动，打开 http://localhost:8000
 
 界面不做计算。数据都由 `engine/` 里的普通 JavaScript 每帧算好，`.vue` 文件只负责显示，并把按钮操作传回去。所以改功能时一般先看 `engine/`、`core/`、`sim/`，只有改显示时才需要碰 `.vue` 文件。
 
+## 用录好的视频测量跟随速度
+
+`stickman-preview/tools/` 里有两个离线工具（需要 Node、ffmpeg 和 Playwright，不进网页打包）：
+
+```
+cd stickman-preview
+node tools/pose-extract.mjs 视频1.mp4 视频2.mov …   # 每段视频逐帧跑 MediaPipe（和网页同一个模型），存成 tools/poses/<名字>.json
+node tools/follow-bench.mjs tools/poses/*.json      # 用网页里同一套滤波和预测回放，量出小人比真人慢多少
+node tools/follow-bench.mjs tools/poses/*.json --sweep   # 试一组参数，按延迟排序
+```
+
+`follow-bench` 假设摄像头延迟 50 ms、识别 35 ms（`--cam`、`--infer` 可改），把「零延迟平滑后的真实关节」和「小人当时的姿势」比：膝、髋、肘角度的延迟（ms）、误差、静止时的抖动和到底 / 到顶时冲过头的角度（°）。参数 `--minCut`、`--beta`、`--lead` 对应 面板 → 摄像头跟随。
+
 ## 更多
 
 详细说明（每项功能怎么算、没有 Node.js 时怎么运行、已知问题）见 [`stickman-preview/README.md`](stickman-preview/README.md)。

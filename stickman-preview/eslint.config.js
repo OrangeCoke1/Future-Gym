@@ -7,5 +7,5 @@ export default [
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   { languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser } } },
-  { files: ['vite.config.js', 'eslint.config.js'], languageOptions: { globals: { ...globals.node } } },
+  { files: ['vite.config.js', 'eslint.config.js', 'tools/**/*.mjs'], languageOptions: { globals: { ...globals.node } } },
 ];
