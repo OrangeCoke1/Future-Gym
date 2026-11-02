@@ -50,6 +50,12 @@ node tools/follow-bench.mjs tools/poses/*.json      # 用网页里同一套滤�
 node tools/follow-bench.mjs tools/poses/*.json --sweep   # 试一组参数，按延迟排序
 ```
 
+```
+node tools/count-bench.mjs tools/poses/*.json       # 用网页里的计数规则数一遍（宽松 / 标准两种），和文件名里的正确次数对比
+```
+
+视频文件名按 `动作_人编号_次数` 命名（如 `深蹲_01_9.mp4`），`count-bench` 就会自动对比；第一批 8 个人的深蹲：宽松 8/8 全对，标准 2/8。
+
 `follow-bench` 假设摄像头延迟 50 ms、识别 35 ms（`--cam`、`--infer` 可改），把「零延迟平滑后的真实关节」和「小人当时的姿势」比：膝、髋、肘角度的延迟（ms）、误差、静止时的抖动和到底 / 到顶时冲过头的角度（°）。参数 `--minCut`、`--beta`、`--lead` 对应 面板 → 摄像头跟随。
 
 ## 更多

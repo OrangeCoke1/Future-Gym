@@ -7,13 +7,13 @@
 // (centred Gaussian), in the same 2D / 3D fused space. Signals compared: knee, hip and elbow angles (°, both sides).
 //
 // Per signal: lag (ms, the shift of the truth that best matches the figure), err (RMS °, no shift), jitter (RMS
-// frame-to-frame acceleration of the figure while the person holds still, °), over (worst overshoot at turnarounds, °).
+// frame-to-frame acceleration of the figure while the person holds still, °), over (overshoot past the person's own turnaround, 95th percentile, °).
 //
 // Usage (in stickman-preview/):
 //   node tools/follow-bench.mjs tools/poses/*.json [--cam 50] [--infer 35] [--minCut 1.5] [--beta 6] [--lead 60] [--sweep] [--json out.json]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { createCamPose, camIngest, camPredict, fuse2d } from '../src/pose/camera.js';
+import { createCamPose, camIngest, camPredict, camSolve, fuse2d } from '../src/pose/camera.js';
 import { CAM_TUNE_DEFAULT } from '../src/pose/camTune.js';
 import { angle3 } from '../src/core/skeleton.js';
 import { V } from '../src/core/math.js';
@@ -29,11 +29,12 @@ const LMI = { sh: 11, el: 13, wr: 15, hip: 23, kn: 25, an: 27 };
 
 /** parse args: files + options */
 export function parseArgs(argv) {
-  const o = { files: [], cam: 50, infer: 35, minCut: CAM_TUNE_DEFAULT.minCut, beta: CAM_TUNE_DEFAULT.beta, lead: CAM_TUNE_DEFAULT.lead, sweep: false, json: null };
+  const o = { files: [], cam: 50, infer: 35, minCut: CAM_TUNE_DEFAULT.minCut, beta: CAM_TUNE_DEFAULT.beta, lead: CAM_TUNE_DEFAULT.lead, legs: CAM_TUNE_DEFAULT.legs, sweep: false, json: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--sweep') o.sweep = true;
     else if (a === '--json') o.json = argv[++i];
+    else if (a === '--legs') o.legs = argv[++i];
     else if (a.startsWith('--') && a.slice(2) in o) o[a.slice(2)] = Number(argv[++i]);
     else o.files.push(a);
   }
@@ -63,7 +64,11 @@ function truthJoints(rec) {
     const p = fuse2d(cam, w, f.res.landmarks[0] || null), J = {};
     for (const k in LMI) for (const s of ['L', 'R']) {
       const q = p[LMI[k] + (s === 'R' ? 1 : 0)];
-      J[k + s] = { v: V(q.x, -q.y, -q.z), vis: q.visibility ?? 1 };
+      // image position inside the frame counts as seen: MediaPipe's visibility drops at the bottom of a squat even though
+      // the ankle is in plain view, and those frames are exactly the ones the figure has to get right
+      const im = f.res.landmarks[0] && f.res.landmarks[0][LMI[k] + (s === 'R' ? 1 : 0)];
+      const inside = im && im.x > 0 && im.x < 1 && im.y > 0 && im.y < 1;
+      J[k + s] = { v: V(q.x, -q.y, -q.z), vis: inside ? Math.max(0.6, q.visibility ?? 1) : (q.visibility ?? 1) };
     }
     return J;
   });
@@ -73,7 +78,7 @@ function truthJoints(rec) {
     const out = {};
     for (const k in J) {
       let x = 0, y = 0, z = 0, w = 0;
-      for (const [d, g] of K) { const o = raw[i + d] && raw[i + d][k]; if (!o || o.vis < 0.5) continue; x += o.v.x * g; y += o.v.y * g; z += o.v.z * g; w += g; }
+      for (const [d, g] of K) { const o = raw[i + d] && raw[i + d][k]; if (!o || o.vis < 0.6) continue; x += o.v.x * g; y += o.v.y * g; z += o.v.z * g; w += g; }
       out[k] = w > 0 ? { v: V(x / w, y / w, z / w), vis: J[k].vis } : J[k];
     }
     return out;
@@ -97,8 +102,9 @@ export function simulate(rec, tune, opt) {
   const t0 = fr[0].t + opt.cam + opt.infer, t1 = fr[fr.length - 1].t;
   for (let r = t0; r <= t1; r += RENDER_DT) {
     while (i < fr.length && ready(fr[i]) <= r) { camIngest(cam, fr[i].res, fr[i].t + opt.cam, false); i++; }
-    const J = camPredict(cam, r, tune.lead / 1000);
-    out.push({ t: r, a: anglesOf(k => J[k], k => cam.Vis[k] ?? 0) });
+    // the figure as drawn: camSolve() of the predicted joints (bone lengths, leg limits, leg confidence blending)
+    const P = camSolve(cam, false, camPredict(cam, r, tune.lead / 1000), r).P;
+    out.push({ t: r, a: anglesOf(k => P[k], () => 1) });
   }
   return out;
 }
@@ -141,14 +147,18 @@ function score(fig, tr, s) {
     if (a == null || b == null || c == null || g0 == null || g1 == null) continue;
     if (Math.abs(g1 - g0) / 0.1 < 15) { jSum += (a - 2 * b + c) ** 2; jN++; }
   }
-  // overshoot: how far past the person's own extreme (in the surrounding 0.6 s) the figure goes
+  // overshoot: how far past the person's own extreme (in the surrounding 0.6 s) the figure goes; 95th percentile, so one
+  // detection glitch does not decide it
+  const ov = [];
   for (const f of fig) for (const side of [0, 1]) {
     const o = f.a[s][side]; if (o == null) continue;
     let lo = Infinity, hi = -Infinity;
     for (let d = -300; d <= 300; d += dt) { const g = truthAt(tr, dt, f.t + d, s, side); if (g != null) { lo = Math.min(lo, g); hi = Math.max(hi, g); } }
-    if (lo < Infinity) over = Math.max(over, o - hi, lo - o);
+    if (lo < Infinity) ov.push(Math.max(0, o - hi, lo - o));
     range = [Math.min(range[0], o), Math.max(range[1], o)];
   }
+  ov.sort((x, y) => x - y);
+  over = ov.length ? ov[Math.floor(ov.length * 0.95)] : 0;
   return { lag, err: rms(base), jitter: Math.sqrt(jSum / Math.max(1, jN)), over, range: range[1] - range[0], n: base.length };
 }
 
@@ -179,7 +189,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`latency model: camera ${opt.cam} ms + inference ${opt.infer} ms; lag in ms, err / jitter / overshoot in °`);
   const result = {};
   if (!opt.sweep) {
-    const tune = { minCut: opt.minCut, beta: opt.beta, lead: opt.lead, legs: 'normal' };
+    const tune = { minCut: opt.minCut, beta: opt.beta, lead: opt.lead, legs: opt.legs };
     const b = bench(recs, tune, opt);
     console.log(head());
     for (const p of b.per) console.log(row(p.name.slice(0, 28), p));
@@ -188,7 +198,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else {
     const rows = [];
     for (const minCut of [0.8, 1.5, 2.5, 4]) for (const beta of [3, 6, 12, 20]) for (const lead of [0, 60, 100, 150]) {
-      const tune = { minCut, beta, lead, legs: 'normal' }, b = bench(recs, tune, opt);
+      const tune = { minCut, beta, lead, legs: opt.legs }, b = bench(recs, tune, opt);
       rows.push({ tune, mean: b.mean });
     }
     rows.sort((a, b) => (a.mean.knee?.lag ?? 1e9) - (b.mean.knee?.lag ?? 1e9));

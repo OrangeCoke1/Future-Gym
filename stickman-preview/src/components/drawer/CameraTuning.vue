@@ -26,6 +26,7 @@ const SLIDERS = [
 /** @param {Partial<import('../../pose/camTune.js').CamTune> | null} p  null = defaults */
 function apply(p) { settings.setCamTune(p); engine.setCamTune(tune); }
 function setModel(m) { settings.camModel = m; engine.setPoseModel(m); }
+function setLenient(on) { settings.fitLenient = on; engine.setFitLenient(on); }
 function setHands(on) { settings.camHands = on; engine.setHands(on); }
 const preset = computed(() => {
   const hit = CAM_TUNE_PRESETS.find(([, v]) => v.minCut === tune.minCut && v.beta === tune.beta && v.lead === tune.lead);
@@ -83,6 +84,27 @@ const show = (k, v) => (k === 'minCut' ? v.toFixed(1) : String(Math.round(v * 10
     </div>
     <p class="note">
       {{ settings.camModel === 'heavy' ? t('高精度模型，四肢位置更准，电脑较慢时帧率会降低') : t('标准模型，速度更快，四肢偶尔对不准') }}
+    </p>
+    <div class="row">
+      <span class="note">{{ t('深蹲识别') }}</span>
+      <div
+        class="seg"
+        role="group"
+        :aria-label="t('深蹲识别')"
+      >
+        <button
+          v-for="[v, name] in [[true, '宽松'], [false, '标准']]"
+          :key="name"
+          type="button"
+          :aria-pressed="String(settings.fitLenient === v)"
+          @click="setLenient(v)"
+        >
+          {{ t(name) }}
+        </button>
+      </div>
+    </div>
+    <p class="note">
+      {{ settings.fitLenient ? t('蹲得浅、不标准也算一次：膝盖比你站直时弯下去一些再站起来就计数') : t('摄像头组的原始规则：要蹲到大腿接近水平，全身每个关键点都要清楚') }}
     </p>
     <div class="row">
       <span class="note">{{ t('手部识别') }}</span>

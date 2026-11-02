@@ -47,6 +47,9 @@ export const useSettings = defineStore('settings', () => {
   /** pose model (面板 → 识别精度): 'heavy' = 高精度, 'full' = 标准 */
   const camModel = ref(load('stick.camModel', v => (v === 'full' || v === 'heavy' ? v : undefined)) || 'heavy');
   watch(camModel, v => save('stick.camModel', v));
+  /** squat recognition (面板 → 摄像头跟随 → 深蹲识别): true = 宽松 (default, for visitors), false = 标准 (the camera team's rules) */
+  const fitLenient = ref(load('stick.fitLenient', v => (v === false ? false : true)));
+  watch(fitLenient, v => save('stick.fitLenient', v));
   /** body model (面板 → 显示 → 人体模型): 'male' (male_body.glb), 'xbot' or 'michelle' (rigged, with finger bones) */
   const body = ref(load('stick.body', v => (v === 'xbot' || v === 'michelle' ? v : 'male')));
   watch(body, v => save('stick.body', v));
@@ -58,5 +61,5 @@ export const useSettings = defineStore('settings', () => {
     layout.cl = layout.cr = 0; layout.g = {}; saveLayout();
     Object.assign(camWin, sanitizeCamWin(null)); saveCamWin();
   }
-  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune, camHands, camModel, body };
+  return { lang, camView, opts, color, view, layout, saveLayout, camWin, saveCamWin, resetLayout, camTune, setCamTune, camHands, camModel, fitLenient, body };
 });
