@@ -1,4 +1,5 @@
 import { TAU } from '../core/math.js';
+import { effVis } from './camera.js';
 
 // ================= FIT CAPSULE recognition (ported from media-pipe-practice-main/apps/web/src) =================
 // The camera team's rule set, calibrated on recorded real people (their documents/recognition.md). Same pipeline and
@@ -7,7 +8,21 @@ import { TAU } from '../core/math.js';
 // action_start / rep / action_end. Recognises squat, dumbbell curl / press and jog, only while READY.
 // Kept as a straight port so it can be compared with (and updated from) their TypeScript.
 // createFit() returns a fresh recogniser: process(res, tMs) per camera frame → events; stop() ends and resets.
-export function createFit() {
+//
+// LOCAL DEVIATION (not upstream), only while `lenient` is on (面板 → 深蹲识别 → 宽松, the default here): visitors at an
+// exhibition squat however they like. Measured on 8 recorded people, the strict rules missed whole sets: at the bottom
+// of a squat MediaPipe's knee / ankle visibility sinks to ~0.4, so framing fell to PARTIAL and reset the detector every
+// rep; and shallow squats never brought the hips within 0.5 torso of the knees. Lenient mode changes exactly two things:
+//   1. framing: a full-body point whose image position is inside the picture counts as visible once its score is at
+//      least LEN.frameMin (camera.js effVis; knees read as low as 0.13 while plainly in view);
+//   2. squat: besides the strict rule, DOWN also when the hips have come LEN.drop torso lengths closer to the knees than
+//      while standing (a knee angle alone swings by 20° with depth noise) and both knees have bent LEN.down° below the person's own standing
+//      knee angles (each knee's highest smoothed angle of the last LEN.standWin ms), and the rep counts on the way back
+//      up once both are within LEN.up° of them, at least LEN.minRepMs after the rep began.
+// Everything else (signals, smoothing, curl / press / jog, the arbiter) is the verbatim port. Strict = upstream exactly.
+const LEN = { frameMin: 0.1, down: 15, drop: 0.1, up: 12, standWin: 5000, standMin: 135, minRepMs: 600 };
+export function createFit(opts = {}) {
+  let lenient = opts.lenient !== false;
   return (() => {
     const CFG = {
       smoothingTauMs: 77,
@@ -40,7 +55,7 @@ export function createFit() {
       if (now - stable.since >= CFG.framingStableMs) stable.cur = next;
       return stable.cur;
     }
-    const classify = pose => !pose ? 'NO_PERSON' : FULL.every(i => { const p = pose.lm[i]; return p && p.visibility >= CFG.visibility && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1; }) ? 'READY' : 'PARTIAL';
+    const classify = pose => !pose ? 'NO_PERSON' : FULL.every(i => { const p = pose.lm[i]; return p && (lenient ? effVis(p.visibility, p, LEN.frameMin) : p.visibility) >= CFG.visibility && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1; }) ? 'READY' : 'PARTIAL';
     // signals
     function ang(a, b, c) {
       const bax = a.x - b.x, bay = a.y - b.y, baz = a.z - b.z, bcx = c.x - b.x, bcy = c.y - b.y, bcz = c.z - b.z;
@@ -61,12 +76,31 @@ export function createFit() {
     }
     // detectors
     let squatPh = 'UP', arms = null, lastLift = null, legHist = [];
+    let standHist = [], downAt = 0;                       // lenient squat: recent knee angles (standing reference), when DOWN began
+    /** lenient squat: how far each knee is bent below its own standing angle (°): the less bent one (both) and the more
+     * bent one (either); null before a reference exists. Per knee, since one knee often reads ~10° straighter than the other */
+    function bendBelowStand(s, t) {
+      standHist.push({ t, L: s.kneeL, R: s.kneeR, hk: s.hipKnee });
+      while (standHist.length > 1 && t - standHist[0].t > LEN.standWin) standHist.shift();
+      let sL = -Infinity, sR = -Infinity, sH = -Infinity;
+      for (const e of standHist) { if (e.L > sL) sL = e.L; if (e.R > sR) sR = e.R; if (e.hk > sH) sH = e.hk; }
+      if (Math.min(sL, sR) < LEN.standMin) return null;    // never seen standing up straight: no reference
+      const bL = sL - s.kneeL, bR = sR - s.kneeR;
+      return { both: Math.min(bL, bR), either: Math.max(bL, bR), drop: sH - s.hipKnee };
+    }
     const newArms = () => [{ side: 'left', e: s => s.elbowL, w: s => s.wristL, h: s => s.elbowHL, curl: 'UNKNOWN', press: 'DOWN' }, { side: 'right', e: s => s.elbowR, w: s => s.wristR, h: s => s.elbowHR, curl: 'UNKNOWN', press: 'DOWN' }];
     arms = newArms();
     function detect(s, t, legsStatic) {
       const out = [], q = CFG.squat, c = CFG.curl, pr = CFG.press, j = CFG.jog;
-      if (squatPh === 'UP' && s.hipKnee < q.downHipKnee && Math.max(s.kneeL, s.kneeR) < q.downKnee) squatPh = 'DOWN';
-      else if (squatPh === 'DOWN' && s.hipKnee > q.upHipKnee && (s.kneeL + s.kneeR) / 2 > q.upKnee) { squatPh = 'UP'; out.push({ action: 'squat', side: 'both', t }); }
+      if (!lenient) {
+        if (squatPh === 'UP' && s.hipKnee < q.downHipKnee && Math.max(s.kneeL, s.kneeR) < q.downKnee) squatPh = 'DOWN';
+        else if (squatPh === 'DOWN' && s.hipKnee > q.upHipKnee && (s.kneeL + s.kneeR) / 2 > q.upKnee) { squatPh = 'UP'; out.push({ action: 'squat', side: 'both', t }); }
+      } else {
+        const b = bendBelowStand(s, t);
+        const strictDown = s.hipKnee < q.downHipKnee && Math.max(s.kneeL, s.kneeR) < q.downKnee;
+        if (squatPh === 'UP' && (strictDown || (b && b.both >= LEN.down && b.drop >= LEN.drop))) { squatPh = 'DOWN'; downAt = t; }
+        else if (squatPh === 'DOWN' && b && b.either <= LEN.up && t - downAt >= LEN.minRepMs) { squatPh = 'UP'; out.push({ action: 'squat', side: 'both', t }); }
+      }
       for (const arm of arms) {
         const el = arm.e(s), wr = arm.w(s), ext = el > c.extElbow && wr < c.extWristMax;
         if (wr > c.abortWrist || arm.h(s) > c.abortElbowHeight) arm.curl = 'UNKNOWN';
@@ -103,9 +137,12 @@ export function createFit() {
     }
     const flush = () => { pending.clear(); return active ? [endA()] : []; };
     let wasReady = false, tracked = false, last = { framing: 'NO_PERSON', signals: null, legsStatic: false };
-    function resetDetect() { sState = null; legHist = []; squatPh = 'UP'; arms = newArms(); lastLift = null; }
+    function resetDetect() { sState = null; legHist = []; squatPh = 'UP'; arms = newArms(); lastLift = null; standHist = []; downAt = 0; }
     return {
       get framing() { return last.framing; },
+      /** lenient recognition (local deviation, see LEN) on / off; takes effect at once */
+      get lenient() { return lenient; },
+      set lenient(v) { lenient = !!v; },
       get current() { return active ? { action: active.action, variant: active.variant, count: countOf(active) } : null; },
       debug: () => last,
       /** one camera frame: MediaPipe result + timestamp (ms) → recognition events */

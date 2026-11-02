@@ -117,6 +117,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   function setHands(on) { camera.setHands(on); if (!on) S.handG = ''; }
   /** pose model (面板 → 识别精度): 'heavy' (高精度) or 'full' (标准) */
   function setPoseModel(m) { camera.setModel(m); }
+  /** squat recognition (面板 → 深蹲识别): true = 宽松 (local deviation, see pose/fit.js LEN), false = the camera team's rules */
+  function setFitLenient(on) { FIT.lenient = !!on; }
   /** camera following: One Euro minCut / beta and prediction lead (ms); fields left out or invalid keep their value
    * @param {Partial<import('../pose/camTune.js').CamTune>} p */
   function setCamTune(p) { Object.assign(camera.pose.tune, sanitizeTune(p, camera.pose.tune)); }
@@ -246,7 +248,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   }
 
   return {
-    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel,
+    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel, setFitLenient,
     /** console tuning shortcut: prediction lead in ms */
     setCamLead(ms) { setCamTune({ lead: Number(ms) }); },
     /** the camera preview's video element and 2D check canvas */

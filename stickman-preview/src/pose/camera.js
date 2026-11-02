@@ -27,6 +27,9 @@ function oneEuro(tune, km = 1, kb = 1, dCut = 2) {
   };
 }
 const Z_KM = 0.4, Z_KB = 0.5;   // depth axis: cutoff × 0.4, speed response × 0.5
+// legs respond faster to speed than arms: on 8 recorded people squatting, doubling the leg response cut the knee lag by
+// about a third for almost no extra jitter, while the arms (noisier, often near the body) got visibly shakier with it
+const LEG_KB = 2, LEG_LEAD = 1.7, LEG_KB_J = /^(hip|kn|an|heel|toe)[LR]$/;
 const VIS_T = 0.2;          // s, smoothing of each joint's visibility (its confidence)
 const FRAME_CUT = 4;        // Hz, smoothing of the body frame (up / side)
 const FACE_DEAD = 1.5 * Math.PI / 180;   // rad, facing changes smaller than this are ignored (no rocking while standing)
@@ -52,6 +55,12 @@ const MAX_V = 3;            // m/s, faster estimates are clamped (detection glit
 const MAX_H = 0.15;         // s, never extrapolate further than this
 const STALE = 0.25;         // s, a joint not updated for this long is held, not extrapolated
 const V_REST = 0.15, V_FULL = 0.35;   // m/s: below V_REST the joint counts as still (no prediction, so jitter is not amplified), full lead from V_FULL
+// repetition range (squats, lunges): each knee's angle over the last REP_WIN s. Once the knee has swung through at least
+// REP_MIN degrees, the prediction of that leg (and, with both legs bending together, of the trunk) is cut short where it
+// would carry the knee past the person's own deepest / straightest point by more than REP_PAD: velocity extrapolation
+// otherwise overshoots at the bottom and the top of every rep, and that limited how much lead could be used.
+const REP_WIN = 6, REP_MIN = 35, REP_PAD = 4;
+const LEG_J = ['hip', 'kn', 'an', 'heel', 'toe'], TRUNK_J = ['shL', 'shR', 'earL', 'earR', 'nose'];
 
 /** @typedef {import('../core/math.js').Vec3} Vec3 */
 /** @typedef {{ J: Record<string, Vec3>, Vl: Record<string, Vec3>, Tj: Record<string, number>, Vis: Record<string, number>,
@@ -76,6 +85,31 @@ export function camSeed(cam) {
   }
   J.nose = add(r('head'), V(0, -0.02, 0.17));
   cam.J = J; cam.Vl = {}; cam.Tj = {}; cam.Vis = {}; cam.F = {}; cam.up = cam.side = cam.face = null; cam.motion = 0; cam.seen = -1e9; cam.s2d = 0; cam.vert = null;
+  cam.kh = { L: [], R: [] };
+}
+
+/** knee angle (°) of leg n in joint set J */
+const kneeAng = (J, n) => {
+  const a = sub(J['hip' + n], J['kn' + n]), b = sub(J['an' + n], J['kn' + n]), d = len(a) * len(b);
+  return d > 1e-6 ? Math.acos(Math.min(1, Math.max(-1, dot(a, b) / d))) * 180 / Math.PI : 180;
+};
+
+/** remember each confidently seen knee angle for the repetition range (REP_WIN) */
+function trackKnees(cam, t) {
+  for (const n of ['L', 'R']) {
+    const h = cam.kh[n];
+    if (Math.min(cam.Vis['hip' + n] ?? 0, cam.Vis['kn' + n] ?? 0, cam.Vis['an' + n] ?? 0) >= 0.6) h.push({ t, a: kneeAng(cam.J, n) });
+    while (h.length && t - h[0].t > REP_WIN) h.shift();
+  }
+}
+
+/** [lo, hi] of leg n's recent knee angles, or null while it has not moved through a repetition */
+function repRange(cam, n, t) {
+  const h = cam.kh[n];
+  if (h.length < 10 || t - h[h.length - 1].t > STALE) return null;
+  let lo = Infinity, hi = -Infinity;
+  for (const e of h) { if (e.a < lo) lo = e.a; if (e.a > hi) hi = e.a; }
+  return hi - lo >= REP_MIN ? [lo - REP_PAD, hi + REP_PAD] : null;
 }
 
 /**
@@ -108,6 +142,20 @@ export function fuse2d(cam, wl, l) {
   }));
 }
 
+// MediaPipe's visibility of the knees and ankles sinks to about 0.4 at the bottom of a squat (seen on 8 recorded people,
+// front view, whole body in frame) although they are in plain view and their positions stay good. Read as unsure, the
+// legs froze and blended back to standing exactly at the deepest point. A joint whose image position is inside the
+// picture is trusted as at least IN_FRAME_VIS while its own score is above IN_FRAME_MIN; legs out of the picture (a
+// laptop camera at a desk) still read as unseen.
+const IN_FRAME_MIN = 0.25, IN_FRAME_VIS = 0.8, IN_FRAME_PAD = 0.01;
+/** visibility used for one joint: its own score, raised while its image position is inside the picture and the score is
+ * at least `min` */
+export function effVis(v, im, min = IN_FRAME_MIN) {
+  if (v < min || !im) return v;
+  const inside = im.x > IN_FRAME_PAD && im.x < 1 - IN_FRAME_PAD && im.y > IN_FRAME_PAD && im.y < 1 - IN_FRAME_PAD;
+  return inside ? Math.max(v, IN_FRAME_VIS) : v;
+}
+
 /** one detection result into the filtered joints; mir = mirror view */
 export function camIngest(cam, res, now, mir) {
   const w0 = res.worldLandmarks && res.worldLandmarks[0];
@@ -115,14 +163,15 @@ export function camIngest(cam, res, now, mir) {
   if (!w0) return;
   const wl = fuse2d(cam, w0, cam.lm2d);
   const t = now / 1000, dt = t - cam.tPrev, J = cam.J;
-  const vis = i => wl[i].visibility == null ? 1 : wl[i].visibility;
+  const vis = i => effVis(wl[i].visibility == null ? 1 : wl[i].visibility, cam.lm2d && cam.lm2d[i]);
   let mv = 0, mvN = 0;
   const va = dt > 0 && dt < 0.5 ? 1 - Math.exp(-dt / VIS_T) : 1;
   const put = (name, i, track) => {
     const c0 = cam.Vis[name] == null ? vis(i) : cam.Vis[name], conf = c0 + (vis(i) - c0) * va;
     cam.Vis[name] = conf;
     if (vis(i) < 0.5) return;                                   // low confidence: keep the previous frame's value
-    const p = wl[i], tn = cam.tune, f = cam.F[name] || (cam.F[name] = [oneEuro(tn), oneEuro(tn), oneEuro(tn, Z_KM, Z_KB)]);
+    const kb = LEG_KB_J.test(name) ? LEG_KB : 1;
+    const p = wl[i], tn = cam.tune, f = cam.F[name] || (cam.F[name] = [oneEuro(tn, 1, kb), oneEuro(tn, 1, kb), oneEuro(tn, Z_KM, Z_KB * kb)]);
     const cs = 0.4 + 0.6 * clamp01((conf - 0.5) / 0.4);         // unsure joints are smoothed harder
     // MediaPipe world space is x → image right, y → down, z → away from the camera; ours is X = character's left, Y up, Z front.
     // Mirroring flips X and (below) swaps which side of the body feeds L / R, so the figure moves like a mirror image.
@@ -141,6 +190,7 @@ export function camIngest(cam, res, now, mir) {
   for (const k in LM) for (const s of ['L', 'R']) put(k + s, LM[k] + ((s === 'R') !== mir ? 1 : 0), k === 'el' || k === 'wr' || k === 'kn' || k === 'an');
   if (mvN) cam.motion += (mv / mvN - cam.motion) * 0.2;       // mean limb speed relative to the hips, m/s
   updateFrame(cam, dt > 0 && dt < 0.5 ? dt : 0);
+  trackKnees(cam, t);
   cam.tPrev = t; cam.fpsN++;
   if (vis(11) >= 0.5 && vis(12) >= 0.5) cam.seen = now;
 }
@@ -201,11 +251,23 @@ export function camPredict(cam, now, lead) {
   const t = now / 1000, out = {};
   for (const k in cam.J) {
     const tj = cam.Tj[k], vl = cam.Vl[k];
-    const h = tj == null || !vl || t - tj > STALE ? 0 : Math.min(MAX_H, Math.max(0, t - tj + lead));
+    const ld = LEG_KB_J.test(k) ? lead * LEG_LEAD : lead;
+    const h = tj == null || !vl || t - tj > STALE ? 0 : Math.min(MAX_H, Math.max(0, t - tj + ld));
     // only clearly moving, confidently seen joints are extrapolated: prediction would amplify the rest's noise
     const g = h > 0 ? clamp01((len(vl) - V_REST) / (V_FULL - V_REST)) * clamp01(((cam.Vis[k] ?? 1) - 0.6) / 0.2) : 0;
     out[k] = g > 0 ? add(cam.J[k], mul(vl, h * g)) : cam.J[k];
   }
+  // within the repetition range: a leg whose predicted knee angle leaves it is pulled back along its own path
+  const kOf = n => {
+    const r = repRange(cam, n, t); if (!r) return null;
+    const a0 = kneeAng(cam.J, n), a1 = kneeAng(out, n), b = a1 < r[0] ? r[0] : a1 > r[1] ? r[1] : a1;
+    return b === a1 || Math.abs(a1 - a0) < 1e-3 ? { k: 1, d: a1 - a0 } : { k: clamp01((b - a0) / (a1 - a0)), d: a1 - a0 };
+  };
+  const pull = (names, f) => { for (const j of names) out[j] = add(cam.J[j], mul(sub(out[j], cam.J[j]), f)); };
+  const kl = kOf('L'), kr = kOf('R');
+  if (kl && kl.k < 1) pull(LEG_J.map(j => j + 'L'), kl.k);
+  if (kr && kr.k < 1) pull(LEG_J.map(j => j + 'R'), kr.k);
+  if (kl && kr && kl.d * kr.d > 0 && Math.min(kl.k, kr.k) < 1) pull(TRUNK_J, Math.min(kl.k, kr.k));   // both knees together: a squat, the trunk too
   return out;
 }
 

@@ -117,3 +117,11 @@
 ## [2026-11-01 06:00] Camera window: resize from any corner, up to the whole page
 - **Goal**: Let the camera window grow much larger and be resized freely.
 - **Changes**: `src/composables/useFloatWin.js` (corner kinds, `headH`, `maxW`, 3-step `toggleSize`); `src/components/stage/CamPreview.vue` (four corner handles); `src/styles/stage.css` (`.cam-rs[data-c]`); `src/i18n/messages.js`.
+
+## [2026-11-02 13:20] Offline tools: pose extraction from videos and a camera-following benchmark
+- **Goal**: Measure how far the figure trails a person (squats first) on recorded videos, to tune following.
+- **Changes**: `stickman-preview/tools/pose-extract.mjs` (new), `stickman-preview/tools/follow-bench.mjs` (new); `stickman-preview/eslint.config.js` (node globals for tools); `.gitignore` (`tools/poses/`); `README.md` (tool usage).
+
+## [2026-11-02 13:30] Lenient squat counting and better leg following, calibrated on 8 recorded people
+- **Goal**: Count non-standard squats (exhibition visitors) and stop the legs freezing / snapping back to standing at the bottom of a squat; lower knee lag.
+- **Changes**: `src/pose/camera.js` (`effVis`, `LEG_KB`, `LEG_LEAD`, `trackKnees`, `repRange`, `camPredict` range hold); `src/pose/fit.js` (`LEN`, lenient framing and squat rule, `lenient` getter / setter); `src/engine/engine.js` (`setFitLenient`); `src/stores/settings.js` (`fitLenient`); `src/App.vue`; `src/components/drawer/CameraTuning.vue` (深蹲识别 switch); `src/i18n/messages.js`; `tools/count-bench.mjs` (new); `tools/follow-bench.mjs` (measures the drawn figure via `camSolve`, p95 overshoot, `--legs`); `CLAUDE.md`; `README.md`.
