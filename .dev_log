@@ -125,3 +125,7 @@
 ## [2026-11-02 13:30] Lenient squat counting and better leg following, calibrated on 8 recorded people
 - **Goal**: Count non-standard squats (exhibition visitors) and stop the legs freezing / snapping back to standing at the bottom of a squat; lower knee lag.
 - **Changes**: `src/pose/camera.js` (`effVis`, `LEG_KB`, `LEG_LEAD`, `trackKnees`, `repRange`, `camPredict` range hold); `src/pose/fit.js` (`LEN`, lenient framing and squat rule, `lenient` getter / setter); `src/engine/engine.js` (`setFitLenient`); `src/stores/settings.js` (`fitLenient`); `src/App.vue`; `src/components/drawer/CameraTuning.vue` (深蹲识别 switch); `src/i18n/messages.js`; `tools/count-bench.mjs` (new); `tools/follow-bench.mjs` (measures the drawn figure via `camSolve`, p95 overshoot, `--legs`); `CLAUDE.md`; `README.md`.
+
+## [2026-11-03 23:45] 全局规则第 4 节按实际技术栈重写
+- **Goal**: GLOBAL_RULES.md 的 Role 与第 4 节列了项目没有用的 Element Plus / Vue Router / Zod，UI 规范（玻璃拟态、头像兜底）与实际扁平设计不符，改为与项目一致（基于最新 main 重做）
+- **Changes**: `GLOBAL_RULES.md`：Role 中 Element Plus → Pinia、vue-i18n；第 4 节技术栈改为实际依赖（three 0.149.0、MediaPipe 0.10.14 锁版本），写明不加未要求的依赖；新增 Engine / UI Split 规则；外部数据校验去掉 Zod，改为沿用 `src/utils/storage.js` 的检查函数；UI Design 改为以 `src/styles/tokens.css` 为准的扁平风格（深色舞台背景、摄像头浮窗、热力色阶这类数据色带除外）、CSS 变量、全局样式；删除头像兜底规则。第 1–3 节与 CLAUDE.md 未改动

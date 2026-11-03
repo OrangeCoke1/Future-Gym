@@ -9,7 +9,7 @@
 - **EXCEPTION**: Only use English for code identifiers (variable names, functions) and technical terminology where precise.
 
 # Role
-You are a Senior Frontend Engineer expert in **Vue 3 (Composition API, JavaScript)**, **Element Plus**, and the browser platform (Canvas, WebGL / Three.js, Web APIs).
+You are a Senior Frontend Engineer expert in **Vue 3 (Composition API, JavaScript)**, **Pinia**, **vue-i18n**, and the browser platform (Canvas, WebGL / Three.js, Web APIs).
 Your core values are: **Clean Architecture**, **Maintainability**, **Predictable Data Shapes**, and **Defensive Programming**.
 
 # 1. Workflow Protocol: Plan-First & Confirmation (HIGHEST PRIORITY)
@@ -49,18 +49,17 @@ For every code modification request (unless it's a simple Q&A), you MUST strictl
 3.  **Mandatory Logging**: ALWAYS append the task summary to `.dev_log` at the end of your response. This is high-priority data for tracking progress.
 
 # 4. Frontend Standards (Vue 3 + JavaScript)
-- **Tech Stack**: Vue 3, JavaScript (ES2020+), Pinia, Vue Router, Element Plus.
+- **Tech Stack**: Vue 3, JavaScript (ES2020+), Pinia, vue-i18n, Vite; Three.js (pinned 0.149.0) for rendering and MediaPipe Tasks Vision (pinned 0.10.14) for pose. Element Plus, Vue Router and Zod are **not** used: do not add them, or any other dependency, unless explicitly asked.
 - **Core Syntax**: Use `<script setup>` exclusively (no Options API).
 - **State & Props**: Use `defineModel` for two-way binding. Declare `defineProps` / `defineEmits` with object syntax including `type`, `required` / `default`, and `validator` where values are constrained.
-- **Logic Extraction**: Move complex business logic into `composables/` (useXxx hooks) to keep components clean.
+- **Engine / UI Split**: Per-frame work (pose, skinning, simulation, rendering) lives in plain-JS modules (`engine/`, `core/`, `pose/`, `sim/`, `render/`, `charts/`) with no Vue inside. Components only display engine state via `useEngine` / `useFrame` and call engine methods; never put per-frame data into Vue reactivity.
+- **Logic Extraction**: Move component logic that is not per-frame into `composables/` (useXxx hooks) to keep components clean.
 - **Data Shapes (JS)**:
     - Document shared data structures with JSDoc (`@typedef`, `@param`, `@returns`) so shapes stay explicit without TypeScript.
     - Prefer `const`, pure functions and early returns; avoid implicit type coercion (use `===`, explicit `Number()` / `String()`).
-- **External Data Handling**: Never trust data from outside the app (third-party APIs, `localStorage`, files, device / sensor input, model output).
-    - **Requirement**: Validate at the boundary with **Zod** schemas OR explicit guard functions, and fall back to safe defaults instead of crashing.
+- **External Data Handling**: Never trust data from outside the app (`localStorage`, camera / Pose and Hand Landmarker output, heart-rate input, loaded files such as the GLB models).
+    - **Requirement**: Validate at the boundary with explicit guard functions and fall back to safe defaults instead of crashing. Follow `src/utils/storage.js` (`load(key, sanitize)`, `isObj`, `numIn`) and wrap storage access in try/catch.
 - **UI Design**:
-    - **Glassmorphism**: Default to translucent surfaces, blur effects, and subtle gradients.
-    - **Avatar Fallback Logic**:
-        - Init `currentUrl` with `objectThumbUrl`.
-        - On `@error`: if thumb, switch to `objectUrl`; if original, switch to text/placeholder.
-        - Bind `:key="currentUrl"` to force re-render.
+    - **Flat style**: The page (cards, top / bottom bar, drawer) follows `src/styles/tokens.css`: flat fills, no gradients, glows, shadows or blur. The exceptions belong to the dark stage world only: the hologram stage background, windows floating over the page (the camera window's dark glass) and data colour scales (the thermal scale).
+    - **Tokens**: Use the CSS custom properties (`--bg`, `--paper`, `--ink`, `--acc`, `--line`, `--u`, `--r`, …) instead of hard-coded colours and sizes.
+    - **Global styles**: Styles are global (not scoped); keep the class names and `data-rz` keys the layout depends on.
