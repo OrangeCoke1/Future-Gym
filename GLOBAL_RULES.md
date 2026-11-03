@@ -59,7 +59,8 @@ For every code modification request (unless it's a simple Q&A), you MUST strictl
     - Inside the `.app` grid, page views are multi-root fragments and panels keep the original element as their single root (no wrapper element): the grid places direct children by class, and `useLayout.js` queries `.app`, `.side.l`, `.side.r` and `[data-rz]`.
 - **Core Syntax**: Use `<script setup>` exclusively (no Options API).
 - **State & Props**: Use `defineModel` for two-way binding. Declare `defineProps` / `defineEmits` with object syntax including `type`, `required` / `default`, and `validator` where values are constrained.
-- **Engine / UI Split**: Per-frame work (pose, skinning, simulation, rendering) lives in plain-JS modules (`engine/`, `core/`, `pose/`, `sim/`, `render/`, `charts/`) with no Vue inside. Components only display engine state via `useEngine` / `useFrame` and call engine methods; never put per-frame data into Vue reactivity.
+- **Engine / UI Split**: Per-frame work (pose, skinning, simulation, rendering) lives in plain-JS modules (`engine/`, `core/`, `pose/`, `sim/`, `render/`, `charts/`) with no Vue inside. Components only display engine state via `useEngine` / `useFrame` and call engine methods; never put per-frame data into Vue reactivity, and never write `engine.S` from a component.
+    - Settings reach the engine only through the watchers in `App.vue`: components change the store. They call engine methods directly only for one-off commands (view presets, play, source, look mode).
 - **Logic Extraction**: Move component logic that is not per-frame into `composables/` (useXxx hooks) to keep components clean.
 - **Data Shapes (JS)**:
     - Document shared data structures with JSDoc (`@typedef`, `@param`, `@returns`) so shapes stay explicit without TypeScript.

@@ -144,3 +144,14 @@
 ## [2026-11-03 23:57] 应用级初始化改回直接写在 App.vue
 - **Goal**: useAppSetup() 只有 App.vue 一个调用方，单独成文件只多一层跳转；按用户要求把它的内容直接写进 App.vue
 - **Changes**: `src/App.vue`：`<script setup>` 里直接做 provideEngine、摄像头启动设置（setCamTune / setHands / setPoseModel / setFitLenient / setBody）、useDocumentLang、window.stickman（setHeartRate、setCamLead），模板仍只有 RouterView；删除 `src/composables/useAppSetup.js`；`useEngine.js`、`useI18n.js` 的注释改回 App（与 main a6f1854 原文一致）；`GLOBAL_RULES.md` 项目结构第一条改为「App.vue 是薄容器，应用级初始化写在它的 script setup 里」；`CLAUDE.md` 三处说明同步；`.prompt.md` 改为本任务计划。验证：lint、build 通过；与 177d18c 的构建相比 #app DOM、7 个网格项位置、交互检查完全一致，保存的 xbot 模型启动时加载，window.stickman 有 setHeartRate / setCamLead，dev 模式无报错
+
+## [2026-11-04 00:22] 工程化修复（第一部分）：渲染循环容错、舞台释放、设置同步、Node 版本、CI
+- **Goal**: 修复扫描发现的会直接出事故的问题：一次异常让渲染循环永久停止；舞台卸载时不释放 WebGL 上下文；设置同步到引擎有三条路；组件直接写 engine.S；没有声明 Node 版本；没有 CI；README 链接到已删除的文件
+- **Changes**:
+  - `src/engine/engine.js`：frame() 先预约下一帧，原帧逻辑移到 step() 并包 try/catch，每个 onFrame / onTick 订阅各自 try/catch，report() 最多每 2 秒打一条 `[engine] … failed`；新增 detach()（attach 时先 detach），attach 重新应用之前的外观模式、颜色、人体模型；setColor 记住颜色；没有舞台时 setMode 直接记到 S.mode / S.dark；新增 setDragging()
+  - `src/render/stage.js`：新增 dispose()（renderer.dispose + forceContextLoss），dispose 后 refresh() 直接返回（防止加载中的模型回调）
+  - `src/components/StageView.vue`：卸载时 engine.detach()；拖动改用 engine.setDragging()
+  - `src/App.vue`：用 watch 把设置同步给引擎（camTune 深监听、camHands、camModel、fitLenient、body 立即执行；camView、color 只在变化时）；`CameraTuning.vue`（不再用 useEngine）、`DisplayOptions.vue`、`TopBar.vue` 只改 store；视角预设、播放、数据源、镜像、外观模式仍直接调引擎方法
+  - `package.json` engines `^20.19.0 || >=22.12.0`（package-lock 同步）、`.nvmrc`（22）、`.npmrc`（engine-strict=true）；新增 `.github/workflows/ci.yml`（push main 和 PR：npm ci → lint → build，Node 版本取自 .nvmrc）；`.gitignore` 增加 `.vercel/`、`*.log`、`.DS_Store`、`Thumbs.db`
+  - 文档：根目录 `README.md` 去掉指向已删除 `stickman-preview/README.md` 的链接，新增「Windows 双击运行」（含拉取后要重新 build 的提醒）；`CLAUDE.md` 说明 Node 版本文件、CI、attach / detach、帧异常处理、设置同步方式；`GLOBAL_RULES.md` Engine / UI Split 增加「不得在组件里写 engine.S；设置只经 App.vue 的 watcher 同步」
+  - 验证：干净 `npm ci`、lint、build 通过；真实 Node 18 下 `npm ci` 报 EBADENGINE 并给出所需版本；与 48807cd 构建对比，#app DOM 与布局恢复、方向键、拖动、抽屉焦点、未知路由结果一致，保存的 xbot 启动时加载，dev 模式无 Vue 报错；故障注入：订阅抛错时其他订阅照常每帧运行、2 秒内只记 2 条日志，帧逻辑抛错时订阅照常运行、修复后立刻恢复渲染；设置同步：面板里每项改动恰好调用一次对应引擎方法且值正确，stick.* 持久化不变；临时空白路由来回切换 20 次：改前出现 5 条 "Too many active WebGL contexts" 且「实体」外观丢失，改后 0 条且外观保留、舞台照常渲染（临时路由未提交）

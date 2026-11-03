@@ -1,0 +1,31 @@
+# Lint and build the app on every push to main and on every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: stickman-preview
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: stickman-preview/.nvmrc
+          cache: npm
+          cache-dependency-path: stickman-preview/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

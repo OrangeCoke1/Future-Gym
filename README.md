@@ -14,6 +14,12 @@ npm run dev      # 启动，打开 http://localhost:8000（地址会变成 http:
 
 改代码后保存，浏览器会自动刷新。用 Chrome 或 Edge 打开。
 
+### Windows 双击运行
+
+双击 `stickman-preview/start.bat`：没有 `dist/` 时它会先构建（需要 Node.js），然后启动本地服务器并打开 `http://localhost:8000`。它只在没有 `dist/` 时才构建，所以拉取新代码后要先在 `stickman-preview/` 里运行一次 `npm run build`（或者删掉 `dist/`），否则打开的还是旧版本。
+
+没有 Node.js 的电脑：在装了 Node.js 的电脑上运行 `npm run build`，把生成的 `stickman-preview/dist/` 文件夹拷到这台电脑的 `stickman-preview/` 里，再双击 `start.bat`。
+
 ## 代码在哪
 
 全部在 `stickman-preview/src/`。大部分是普通 JavaScript，只有界面部分用到 Vue。
@@ -62,7 +68,5 @@ node tools/count-bench.mjs tools/poses/*.json       # 用网页里的计数规�
 `follow-bench` 假设摄像头延迟 50 ms、识别 35 ms（`--cam`、`--infer` 可改），把「零延迟平滑后的真实关节」和「小人当时的姿势」比：膝、髋、肘角度的延迟（ms）、误差、静止时的抖动和到底 / 到顶时冲过头的角度（°）。参数 `--minCut`、`--beta`、`--lead` 对应 面板 → 摄像头跟随。
 
 ## 更多
-
-详细说明（每项功能怎么算、没有 Node.js 时怎么运行、已知问题）见 [`stickman-preview/README.md`](stickman-preview/README.md)。
 
 人体模型 “Male Body” 作者是 Alexander Antipov，采用 [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) 许可，对外展示时请保留署名。
