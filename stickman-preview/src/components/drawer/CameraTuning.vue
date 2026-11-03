@@ -3,7 +3,6 @@
 // (One Euro cutoff at rest, its rise with speed, prediction lead) and the leg mode; changes apply at once and are saved.
 import { computed } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
-import { useEngine } from '../../composables/useEngine.js';
 import { useSettings } from '../../stores/settings.js';
 import { CAM_TUNE_PRESETS, CAM_TUNE_RANGE } from '../../pose/camTune.js';
 
@@ -12,7 +11,6 @@ const LEGS = [['normal', '正常'], ['auto', '自动'], ['stand', '固定站姿'
 const LEG_HINT = { normal: '全身都跟着你动，看不到腿时腿跟着上身一起倾斜', auto: '看不到下半身时腿和骨盆站着不动，只有腰以上跟着你动', stand: '腿和骨盆一直保持站姿，只有腰以上跟着你动' };
 
 const { t } = useI18n();
-const { engine } = useEngine();
 const settings = useSettings();
 const tune = settings.camTune;
 
@@ -24,10 +22,10 @@ const SLIDERS = [
 ];
 
 /** @param {Partial<import('../../pose/camTune.js').CamTune> | null} p  null = defaults */
-function apply(p) { settings.setCamTune(p); engine.setCamTune(tune); }
-function setModel(m) { settings.camModel = m; engine.setPoseModel(m); }
-function setLenient(on) { settings.fitLenient = on; engine.setFitLenient(on); }
-function setHands(on) { settings.camHands = on; engine.setHands(on); }
+function apply(p) { settings.setCamTune(p); }
+function setModel(m) { settings.camModel = m; }
+function setLenient(on) { settings.fitLenient = on; }
+function setHands(on) { settings.camHands = on; }
 const preset = computed(() => {
   const hit = CAM_TUNE_PRESETS.find(([, v]) => v.minCut === tune.minCut && v.beta === tune.beta && v.lead === tune.lead);
   return hit ? hit[0] : null;

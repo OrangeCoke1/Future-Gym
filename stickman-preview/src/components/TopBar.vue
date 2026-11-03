@@ -11,7 +11,7 @@ const emit = defineEmits({ toggleDrawer: null });
 const { t, lang } = useI18n();
 const { engine, live } = useEngine();
 const settings = useSettings();
-function pickCamView(v) { settings.camView = v; engine.setCamView(v); }
+function pickCamView(v) { settings.camView = v; }
 const LANG_NAMES = { zh: ['中文', 'zh-CN'], ja: ['日本語', 'ja'], en: ['EN', 'en'] };
 
 const pad = v => String(v).padStart(2, '0');
