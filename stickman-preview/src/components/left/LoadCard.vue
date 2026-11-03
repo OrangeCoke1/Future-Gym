@@ -2,11 +2,13 @@
 // Joint load (simulated): side view of the posture plus knee / hip / lower-back load as multiples of body weight.
 import { ref } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
+import { useCard } from '../../composables/useLayout.js';
 import { useFrame } from '../../composables/useEngine.js';
 import { useChart } from '../../composables/useChart.js';
 import { drawLoad } from '../../charts/load.js';
 
 const { t } = useI18n();
+const { el: card, style: cardStyle } = useCard('load');
 const cv = ref(null), ch = useChart(cv);
 const KEYS = [['knee', '膝'], ['hip', '髋'], ['spine', '腰椎']];
 const vals = ref(KEYS.map(() => ({ s: '—', w: '0%' })));
@@ -19,8 +21,10 @@ useFrame(S => {
 
 <template>
   <div
+    ref="card"
     class="tile load"
     data-rz="load"
+    :style="cardStyle"
   >
     <div
       class="k"

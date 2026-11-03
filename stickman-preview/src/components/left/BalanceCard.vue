@@ -2,11 +2,13 @@
 // Centre of mass and left / right share of weight, from the skeleton (top view).
 import { ref } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
+import { useCard } from '../../composables/useLayout.js';
 import { useFrame } from '../../composables/useEngine.js';
 import { useChart } from '../../composables/useChart.js';
 import { drawBal } from '../../charts/balance.js';
 
 const { t } = useI18n();
+const { el: card, style: cardStyle } = useCard('bal');
 const cv = ref(null), ch = useChart(cv), left = ref(50);
 useFrame(S => {
   if (ch.value && S.balance) drawBal(ch.value, { P: S.sol.P, D: S.sol.D, ...S.balance });
@@ -16,8 +18,10 @@ useFrame(S => {
 
 <template>
   <div
+    ref="card"
     class="tile bal"
     data-rz="bal"
+    :style="cardStyle"
   >
     <div class="k">
       {{ t('重心与平衡') }}<span class="est">{{ t('骨架计算') }}</span>

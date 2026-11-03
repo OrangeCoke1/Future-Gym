@@ -2,11 +2,13 @@
 // Energy (estimated): total kcal and one fine bar per 2 s over the last 60 s.
 import { ref } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
+import { useCard } from '../../composables/useLayout.js';
 import { useEngine, useFrame } from '../../composables/useEngine.js';
 import { useChart } from '../../composables/useChart.js';
 import { drawKcal } from '../../charts/kcal.js';
 
 const { t } = useI18n();
+const { el: card, style: cardStyle } = useCard('kcal');
 const { live } = useEngine();
 const cv = ref(null), ch = useChart(cv), kcal = ref('0.0');
 useFrame(S => {
@@ -17,8 +19,10 @@ useFrame(S => {
 
 <template>
   <div
+    ref="card"
     class="bare"
     data-rz="kcal"
+    :style="cardStyle"
   >
     <div class="k">
       {{ t('能量消耗') }}<span

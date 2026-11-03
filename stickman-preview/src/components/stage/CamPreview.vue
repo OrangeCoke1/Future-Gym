@@ -7,16 +7,17 @@ import { useI18n } from '../../i18n/useI18n.js';
 import { useEngine } from '../../composables/useEngine.js';
 import { useSettings } from '../../stores/settings.js';
 import { useFloatWin } from '../../composables/useFloatWin.js';
+import { layoutRef } from '../../composables/useLayout.js';
 
 const { t } = useI18n();
 const { engine, live } = useEngine();
 const settings = useSettings();
 const win = ref(null), video = ref(null), canvas = ref(null);
-const rect = settings.camWin;
+const rect = settings.camWin, stageEl = layoutRef('stage');
 
 /** default: the stage's bottom-right, above the angle gauge, ~45% of the stage width (page coordinates) */
 const place = (w, h) => {
-  const st = document.querySelector('.stage'), r = st ? st.getBoundingClientRect() : { left: 0, top: 0, width: w, height: h };
+  const st = stageEl.value, r = st ? st.getBoundingClientRect() : { left: 0, top: 0, width: w, height: h };
   const pw = Math.round(Math.min(Math.max(r.width * 0.45, 320), 480, r.width - 40));
   const ph = pw / (Number(live.camAspect) || 4 / 3) + 28;
   return { x: Math.round(r.left + r.width - pw - 20), y: Math.round(Math.max(r.top, r.top + r.height - ph - 150)), w: pw };

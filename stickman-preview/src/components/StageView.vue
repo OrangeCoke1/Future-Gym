@@ -3,11 +3,12 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useEngine } from '../composables/useEngine.js';
 import { useI18n } from '../i18n/useI18n.js';
+import { layoutRef } from '../composables/useLayout.js';
 
 const emit = defineEmits({ drag: null });          // the user turned the view by hand (ends orbit / view presets)
 const { engine, live } = useEngine();
 const { t } = useI18n();
-const glEl = ref(null), fxEl = ref(null), noGl = ref(false);
+const glEl = ref(null), fxEl = ref(null), noGl = ref(false), stageEl = layoutRef('stage');   // stageEl: also where the camera window first appears
 let ro = null, drag = null;
 
 onMounted(() => {
@@ -31,6 +32,7 @@ function up() { drag = null; engine.setDragging(false); }
 
 <template>
   <div
+    ref="stageEl"
     class="stage"
     :class="{ holo: live.dark }"
   >

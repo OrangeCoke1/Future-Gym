@@ -3,11 +3,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from '../../i18n/useI18n.js';
+import { useCard } from '../../composables/useLayout.js';
 import { useFrame } from '../../composables/useEngine.js';
 import { useHydration } from '../../stores/hydration.js';
 import { GOAL, netOf, bottleWidth } from '../../sim/hydration.js';
 
 const { t } = useI18n();
+const { el: card, style: cardStyle } = useCard('water');
 const store = useHydration();
 const { total, lastEntry } = storeToRefs(store);
 const net = ref(0);
@@ -21,8 +23,10 @@ const BOTTLE = 'M10 2H186C200 2 204 12 214 12H226V28H214C204 28 200 38 186 38H10
 
 <template>
   <div
+    ref="card"
     class="tile water"
     data-rz="water"
+    :style="cardStyle"
   >
     <div class="w-top">
       <span class="k">{{ t('水分') }}<span

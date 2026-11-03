@@ -2,6 +2,7 @@
 // Heart rate: a radial dial (estimated, or measured from a connected device), the beating heart icon, 30 s trend.
 import { ref } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
+import { useCard } from '../../composables/useLayout.js';
 import { useEngine, useFrame } from '../../composables/useEngine.js';
 import { useChart } from '../../composables/useChart.js';
 import { zoneOf } from '../../sim/metrics.js';
@@ -9,6 +10,7 @@ import { drawHr } from '../../charts/hr.js';
 import { drawTrend } from '../../charts/trend.js';
 
 const { t } = useI18n();
+const { el: card, style: cardStyle } = useCard('hr');
 const { live } = useEngine();
 const dial = ref(null), trend = ref(null), chD = useChart(dial), chT = useChart(trend), beat = ref(false);
 useFrame(S => {
@@ -21,8 +23,10 @@ const HEART = 'M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.1 4.3 2.
 
 <template>
   <div
+    ref="card"
     class="tile ink"
     data-rz="hr"
+    :style="cardStyle"
   >
     <div class="k">
       <svg
