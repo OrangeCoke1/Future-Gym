@@ -136,12 +136,23 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     if (mouse) { c.pitchT = clamp(c.pitchT + dy * 0.004, 0.0, 0.6); c.pitch = c.pitchT; }
   }
 
-  /** hand the stage its canvases; returns false when WebGL is unavailable */
+  let color = null;                                     // chosen figure colour; null = the stage's default
+  /** hand the stage its canvases; returns false when WebGL is unavailable. The look (mode, colour, body) carries over from an earlier stage */
   function attach(gl, fx) {
-    S.stage = createStage({ canvas: gl, act: S.mu.musAct, onMode: (m, dark) => { S.mode = m; S.dark = dark; } });
+    detach();
+    const m = S.mode;                                   // createStage fires onMode('particle') while it builds
+    S.stage = createStage({ canvas: gl, act: S.mu.musAct, onMode: (k, dark) => { S.mode = k; S.dark = dark; } });
     overlay = fx.getContext('2d');
-    if (S.stage && body !== 'male') S.stage.setBody(body);
-    return !!S.stage;
+    if (!S.stage) return false;
+    if (m !== S.stage.current) S.stage.mode(m);
+    if (color) S.stage.color(color);
+    if (body !== 'male') S.stage.setBody(body);
+    return true;
+  }
+  /** the stage canvases are going away (StageView unmounts): free the WebGL context; the next attach() builds a new stage */
+  function detach() {
+    if (S.stage) S.stage.dispose();
+    S.stage = null; overlay = null;
   }
   /** CSS size of the stage canvases */
   function resize(width, height) {
@@ -150,10 +161,22 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     if (S.stage) S.stage.resize(width, height, dpr);
   }
 
+  let errT = -Infinity;
+  /** an error must not end the loop: log it (at most every 2 s, since a broken frame throws every frame) and go on */
+  function report(where, e) { const t = performance.now(); if (t - errT < 2000) return; errT = t; console.error('[engine] ' + where + ' failed', e); }
+
   function frame(now) {
+    raf = requestAnimationFrame(frame);                 // first, so an error below cannot stop the loop (and stop() works mid-frame)
     const raw = last ? (now - last) / 1000 : 0, dt = Math.min(0.05, raw); last = now;
-    if (S.stage) S.stage.watchPerf(raw);
     S.uiT += dt; S.uiTick = S.uiT >= UI_DT; if (S.uiTick) S.uiT = 0;
+    try { step(now, raw, dt); } catch (e) { report('frame', e); }
+    for (const f of frameSubs) { try { f(S, dt); } catch (e) { report('onFrame subscriber', e); } }
+    if (S.uiTick) for (const f of tickSubs) { try { f(S); } catch (e) { report('onTick subscriber', e); } }
+  }
+
+  /** one frame of pose source → skeleton → rep counting → simulations → stage render and overlay */
+  function step(now, raw, dt) {
+    if (S.stage) S.stage.watchPerf(raw);
     const A = ACT[S.action], c = S.cam, RP = S.RP;
     const replay = S.camOn && S.camView === 'replay';
     if (S.camOn) {
@@ -241,24 +264,23 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     const deg = Math.round(Math.atan2(fv.x, fv.z) * 180 / Math.PI), ad = Math.abs(deg);
     S.facing = { key: ad < 30 ? '正面' : ad > 150 ? '背面' : deg > 0 ? '朝右' : '朝左', deg: ad };
     if (S.stage && overlay) drawOverlay(overlay, { ...S.stage.view, project: S.stage.project, P: S.stage.mapP(P), show: S.show, curAngle: S.curAngle, dark: S.dark, angle: opts.angle, dots: opts.dots });
-
-    for (const f of frameSubs) f(S, dt);
-    if (S.uiTick) for (const f of tickSubs) f(S);
-    raf = requestAnimationFrame(frame);
   }
 
   return {
-    S, attach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel, setFitLenient,
+    S, attach, detach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel, setFitLenient,
     /** console tuning shortcut: prediction lead in ms */
     setCamLead(ms) { setCamTune({ lead: Number(ms) }); },
     /** the camera preview's video element and 2D check canvas */
     attachCamera(video, canvas) { camera.attach(video, canvas); },
     setPlaying(v) { S.playing = !!v; },
     setSpeed(v) { S.speed = v; },
-    setMode(m) { if (S.stage) S.stage.mode(m); },
+    /** look: 'particle' | 'solid' | 'moire'; without a stage (between pages) it is kept for the next one */
+    setMode(m) { if (S.stage) S.stage.mode(m); else { S.mode = m; S.dark = m !== 'solid'; } },
     /** body model (面板 → 人体模型): 'male' | 'xbot' | 'michelle'; kept until the stage exists */
     setBody(k) { body = k; if (S.stage) S.stage.setBody(k); },
-    setColor(hex) { if (S.stage) S.stage.color(hex); },
+    setColor(hex) { color = hex; if (S.stage) S.stage.color(hex); },
+    /** a drag on the stage is in progress (holds the orbit) */
+    setDragging(v) { S.cam.dragging = !!v; },
     setHeartRate(bpm) { setHeartRate(S.M, bpm, performance.now()); },
     clearSets() { S.sets.length = 0; },
     /** per-frame subscriber (S, dt); returns an unsubscribe function */

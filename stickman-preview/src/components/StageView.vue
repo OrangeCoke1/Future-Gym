@@ -15,10 +15,10 @@ onMounted(() => {
   const fit = () => { const r = fxEl.value.getBoundingClientRect(); engine.resize(r.width, r.height); };
   ro = new ResizeObserver(fit); ro.observe(fxEl.value); fit();
 });
-onBeforeUnmount(() => ro && ro.disconnect());
+onBeforeUnmount(() => { if (ro) ro.disconnect(); engine.detach(); });   // frees the WebGL context; the look carries over to the next stage
 
 function down(e) {
-  drag = { x: e.clientX, y: e.clientY }; engine.S.cam.dragging = true;
+  drag = { x: e.clientX, y: e.clientY }; engine.setDragging(true);
   fxEl.value.setPointerCapture(e.pointerId); emit('drag');
 }
 function move(e) {
@@ -26,7 +26,7 @@ function move(e) {
   engine.dragBy(e.clientX - drag.x, e.clientY - drag.y, e.pointerType === 'mouse');
   drag = { x: e.clientX, y: e.clientY };
 }
-function up() { drag = null; engine.S.cam.dragging = false; }
+function up() { drag = null; engine.setDragging(false); }
 </script>
 
 <template>

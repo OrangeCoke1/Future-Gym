@@ -217,6 +217,7 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
   function mapP(P) { const cur = shown && bodies[shown]; return cur && cur.mapP && P ? cur.mapP(P) : P; }
   /** show the chosen body if it has loaded, else male_body.glb if that has, else the built-in shapes */
   function refresh() {
+    if (disposed) return;                         // a model load that finished after dispose()
     shown = bodies[want] && bodies[want].loaded ? want : model.loaded ? 'male' : null;
     if (shown) bodies[shown].activate(); else particles.use(particles.procedural);
     mode(curMode);
@@ -236,11 +237,14 @@ export function createStage({ canvas, act, modelUrl = import.meta.env.BASE_URL +
     }
     if (want === key) refresh();
   }
+  let disposed = false;
+  /** the canvas is going away: losing the context frees every GPU resource at once; the JS objects go with the stage */
+  function dispose() { disposed = true; renderer.dispose(); renderer.forceContextLoss(); }
 
   mode('particle');
   model.load(modelUrl).then(refresh).catch(e => console.warn('male_body.glb not loaded; using the built-in body shape', e));   // switch the solid / moiré view over to the mesh
   return {
-    color, mode, reform, resize, watchPerf, render, project, setBody, mapP,
+    color, mode, reform, resize, watchPerf, render, project, setBody, mapP, dispose,
     /** @returns {LookMode} */
     get current() { return curMode; },
     /** the stage is dark (particle and moiré views) */
