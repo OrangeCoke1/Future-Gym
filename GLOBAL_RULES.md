@@ -52,7 +52,7 @@ For every code modification request (unless it's a simple Q&A), you MUST strictl
 - **Tech Stack**: Vue 3, JavaScript (ES2020+), Pinia 3, Vue Router 5 (hash history), vue-i18n, Vite 7; Three.js (pinned 0.149.0) for rendering and MediaPipe Tasks Vision (pinned 0.10.14) for pose. Element Plus and Zod are **not** used: do not add them, or any other dependency, unless explicitly asked.
 - **Dependencies**: Pin exact versions in `package.json`. If upgrading or adding one forces peer upgrades, list every affected package in the plan; never use `--force` / `--legacy-peer-deps`.
 - **Project Structure**:
-    - `App.vue` is an empty container: app-wide setup via `useAppSetup()` (engine, language) and `<RouterView />`. App-wide state is provided there, never inside a page, so it survives navigation.
+    - `App.vue` is a thin container: app-wide setup (engine, persisted settings, language, `window.stickman`) in its `<script setup>`, plus `<RouterView />`; no layout markup. App-wide state is provided there, never inside a page, so it survives navigation.
     - Routes live in `router/index.js`; the default page is a static import, other pages are lazy-loaded (`() => import(...)`).
     - `layouts/`: shells shared by pages (`AppLayout.vue`: the `.app` grid, top bar, settings drawer).
     - `views/`: one `XxxView.vue` per route. Parts used by only one page go in `views/<page>/` (`XxxPanel.vue`); reusable parts stay in `components/`.

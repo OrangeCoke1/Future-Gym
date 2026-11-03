@@ -140,3 +140,7 @@
   - `GLOBAL_RULES.md` 第 4 节：技术栈改为 Pinia 3 / Vue Router 5 / Vite 7；新增 Dependencies（锁版本、连带升级须列入计划、禁止 --force / --legacy-peer-deps）与 Project Structure（App / router / layouts / views / components 的分工，.app 网格内页面用多根节点、区域组件不加包裹层）
   - `CLAUDE.md`：技术栈与 Node 版本、hash 地址、新增 Pages 一条（含 engine.attach 未释放的提醒）、provideEngine / useDocumentLang 的位置；根目录 `README.md`：Node 版本、地址、路由 / 布局 / 页面三行；`.prompt.md` 改为本任务的计划
   - 验证（与 main a6f1854 的构建对比）：lint、build 通过；headless Chromium 中 #app 的元素树、class、aria、data-rz 与 style 一致（只多了多根节点组件的两个空文本锚点），7 个网格项位置尺寸完全相同；卡片尺寸刷新后恢复、方向键调整、拖动栏宽、抽屉打开 / Esc 关闭后焦点返回、`/#/nope` 重定向到 `/#/` 均正常；保存的人体模型 xbot 启动时加载，window.stickman 有 setHeartRate / setCamLead；dev 模式无 Vue / 路由报错
+
+## [2026-11-03 23:57] 应用级初始化改回直接写在 App.vue
+- **Goal**: useAppSetup() 只有 App.vue 一个调用方，单独成文件只多一层跳转；按用户要求把它的内容直接写进 App.vue
+- **Changes**: `src/App.vue`：`<script setup>` 里直接做 provideEngine、摄像头启动设置（setCamTune / setHands / setPoseModel / setFitLenient / setBody）、useDocumentLang、window.stickman（setHeartRate、setCamLead），模板仍只有 RouterView；删除 `src/composables/useAppSetup.js`；`useEngine.js`、`useI18n.js` 的注释改回 App（与 main a6f1854 原文一致）；`GLOBAL_RULES.md` 项目结构第一条改为「App.vue 是薄容器，应用级初始化写在它的 script setup 里」；`CLAUDE.md` 三处说明同步；`.prompt.md` 改为本任务计划。验证：lint、build 通过；与 177d18c 的构建相比 #app DOM、7 个网格项位置、交互检查完全一致，保存的 xbot 模型启动时加载，window.stickman 有 setHeartRate / setCamLead，dev 模式无报错

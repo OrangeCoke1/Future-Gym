@@ -13,7 +13,7 @@ export function useI18n() {
   const t = (s, ...a) => (a.length ? vt(s, a) : vt(s));
   return { t, lang };
 }
-/** the settings store's language drives vue-i18n, <html lang> and the document title (call once, in useAppSetup) */
+/** the settings store's language drives vue-i18n, <html lang> and the document title (call once, in App) */
 export function useDocumentLang() {
   const { t, lang } = useI18n();
   const { locale } = useVueI18n({ useScope: 'global' });
