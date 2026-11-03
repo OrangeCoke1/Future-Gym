@@ -4,19 +4,20 @@
 
 ## 运行
 
-先装 [Node.js](https://nodejs.org/)（自带 npm，版本要 20.19 以上或 22.12 以上），然后：
+先装 [Node.js](https://nodejs.org/)（自带 npm，版本要 22.13 以上，或 24 以上），然后：
 
 ```
 cd stickman-preview
 npm install      # 第一次运行时安装依赖
 npm run dev      # 启动，打开 http://localhost:8000（地址会变成 http://localhost:8000/#/）
+npm test         # 跑单元测试（改了计数、模拟数据等纯逻辑后跑一下）
 ```
 
 改代码后保存，浏览器会自动刷新。用 Chrome 或 Edge 打开。
 
 ### Windows 双击运行
 
-双击 `stickman-preview/start.bat`：没有 `dist/` 时它会先构建（需要 Node.js），然后启动本地服务器并打开 `http://localhost:8000`。它只在没有 `dist/` 时才构建，所以拉取新代码后要先在 `stickman-preview/` 里运行一次 `npm run build`（或者删掉 `dist/`），否则打开的还是旧版本。
+双击 `stickman-preview/start.bat`：没有 `dist/`，或者代码比 `dist/` 新（比如刚拉取了新代码）时，它会先重新构建（需要 Node.js；依赖有变化时才联网安装），然后启动本地服务器并打开 `http://localhost:8000`。没装 Node.js 或构建失败时，有旧的 `dist/` 就打开旧版本并提示一句。
 
 没有 Node.js 的电脑：在装了 Node.js 的电脑上运行 `npm run build`，把生成的 `stickman-preview/dist/` 文件夹拷到这台电脑的 `stickman-preview/` 里，再双击 `start.bat`。
 
@@ -68,5 +69,7 @@ node tools/count-bench.mjs tools/poses/*.json       # 用网页里的计数规�
 `follow-bench` 假设摄像头延迟 50 ms、识别 35 ms（`--cam`、`--infer` 可改），把「零延迟平滑后的真实关节」和「小人当时的姿势」比：膝、髋、肘角度的延迟（ms）、误差、静止时的抖动和到底 / 到顶时冲过头的角度（°）。参数 `--minCut`、`--beta`、`--lead` 对应 面板 → 摄像头跟随。
 
 ## 更多
+
+每项功能怎么做、怎么算，以及摄像头模式的细节，见 [`stickman-preview/README.md`](stickman-preview/README.md)。
 
 人体模型 “Male Body” 作者是 Alexander Antipov，采用 [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) 许可，对外展示时请保留署名。
