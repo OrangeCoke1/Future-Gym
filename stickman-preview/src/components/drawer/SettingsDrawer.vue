@@ -1,6 +1,6 @@
 <script setup>
 // Slide-over panel for the secondary controls. Esc or the scrim closes it; focus moves to the close button on open
-// and back to the panel button (handled by App) on close.
+// and back to the panel button (handled by AppLayout) on close.
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import DisplayOptions from './DisplayOptions.vue';

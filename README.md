@@ -4,12 +4,12 @@
 
 ## 运行
 
-先装 [Node.js](https://nodejs.org/)（自带 npm），然后：
+先装 [Node.js](https://nodejs.org/)（自带 npm，版本要 20.19 以上或 22.12 以上），然后：
 
 ```
 cd stickman-preview
 npm install      # 第一次运行时安装依赖
-npm run dev      # 启动，打开 http://localhost:8000
+npm run dev      # 启动，打开 http://localhost:8000（地址会变成 http://localhost:8000/#/）
 ```
 
 改代码后保存，浏览器会自动刷新。用 Chrome 或 Edge 打开。
@@ -26,6 +26,9 @@ npm run dev      # 启动，打开 http://localhost:8000
 | 3D 小人的绘制 | `render/` |
 | 卡片上的小图表 | `charts/` |
 | 每帧的主流程（把上面这些串起来） | `engine/engine.js` |
+| 页面有哪些、地址是什么 | `router/index.js` |
+| 页面的整体框架（顶栏、设置面板） | `layouts/AppLayout.vue` |
+| 每个页面放哪些区域 | `views/`（一个页面一个文件，只属于该页面的区域放在 `views/页面名/`） |
 | 界面上的文字、按钮、卡片 | `components/`（`.vue` 文件） |
 | 中文 / 日文 / 英文翻译 | `i18n/messages.js` |
 | 样式 | `styles/` |

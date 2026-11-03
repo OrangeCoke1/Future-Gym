@@ -1,4 +1,4 @@
-// Bridges the plain-JS engine to Vue: one engine per app (provideEngine in App.vue, useEngine in components).
+// Bridges the plain-JS engine to Vue: one engine per app (provideEngine in useAppSetup, useEngine in components).
 // `live` mirrors the few engine values the UI shows; it is only written when a value actually changes, so
 // components re-render at the rate the numbers change, not at the frame rate.
 import { inject, provide, shallowReactive, markRaw, onBeforeUnmount } from 'vue';

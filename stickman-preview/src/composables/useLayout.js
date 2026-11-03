@@ -6,7 +6,7 @@ import { useSettings } from '../stores/settings.js';
 
 const rz = k => document.querySelector('[data-rz="' + k + '"]');
 
-/** call once in App: keeps every [data-rz] card's --g in step with the store */
+/** call in the page that owns the [data-rz] cards (TrainingView): keeps each card's --g in step with the store */
 export function useLayoutVars() {
   const { layout } = useSettings();
   onMounted(() => watchEffect(() => {

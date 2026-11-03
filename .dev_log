@@ -129,3 +129,14 @@
 ## [2026-11-03 23:45] 全局规则第 4 节按实际技术栈重写
 - **Goal**: GLOBAL_RULES.md 的 Role 与第 4 节列了项目没有用的 Element Plus / Vue Router / Zod，UI 规范（玻璃拟态、头像兜底）与实际扁平设计不符，改为与项目一致（基于最新 main 重做）
 - **Changes**: `GLOBAL_RULES.md`：Role 中 Element Plus → Pinia、vue-i18n；第 4 节技术栈改为实际依赖（three 0.149.0、MediaPipe 0.10.14 锁版本），写明不加未要求的依赖；新增 Engine / UI Split 规则；外部数据校验去掉 Zod，改为沿用 `src/utils/storage.js` 的检查函数；UI Design 改为以 `src/styles/tokens.css` 为准的扁平风格（深色舞台背景、摄像头浮窗、热力色阶这类数据色带除外）、CSS 变量、全局样式；删除头像兜底规则。第 1–3 节与 CLAUDE.md 未改动
+
+## [2026-11-03 23:48] 加入 Vue Router，App.vue 改为空容器（App → AppLayout → views），重写全局规则
+- **Goal**: 为以后的多页面做准备：加路由，App.vue 只做应用级初始化并放 RouterView，现有界面拆成 training 路由页面；全局规则同步改写。基于最新 main（a6f1854）重做，main 在 App.vue 里新增的摄像头启动设置一并搬入 useAppSetup
+- **Changes**:
+  - 依赖（均锁定版本）：新增 `vue-router@5.4.0`；因其 peer 要求同时升级 `pinia` 2.3.1→3.0.4、`vite` 6.4.4→7.3.7、`@vitejs/plugin-vue` 5.2.4→6.0.10（Node 需 ^20.19 或 >=22.12）。`npm audit --omit=dev` 0 个漏洞；剩余 7 个 moderate 均在 eslint/minimatch 开发依赖链上（升级前已有，原有的 vite 6.4.4 漏洞随升级消失）
+  - 新增 `src/router/index.js`（hash history，`/` → AppLayout → TrainingView，未知路径重定向到 `/`）、`src/composables/useAppSetup.js`（provideEngine、setCamTune / setHands / setPoseModel / setFitLenient / setBody、useDocumentLang、window.stickman 的 setHeartRate 与 setCamLead）、`src/layouts/AppLayout.vue`（.app 网格、TopBar、RouterView、SettingsDrawer、抽屉焦点返回）、`src/views/TrainingView.vue`（多根节点；调用 useLayoutVars）、`src/views/training/LeftPanel.vue` / `CenterPanel.vue`（含 onDrag）/ `RightPanel.vue`
+  - `src/App.vue` 只剩 useAppSetup() + RouterView；`src/main.js` 注册 router，router.isReady() 后再挂载
+  - 注释改为新位置：`useEngine.js`、`useLayout.js`、`useI18n.js`、`SettingsDrawer.vue`
+  - `GLOBAL_RULES.md` 第 4 节：技术栈改为 Pinia 3 / Vue Router 5 / Vite 7；新增 Dependencies（锁版本、连带升级须列入计划、禁止 --force / --legacy-peer-deps）与 Project Structure（App / router / layouts / views / components 的分工，.app 网格内页面用多根节点、区域组件不加包裹层）
+  - `CLAUDE.md`：技术栈与 Node 版本、hash 地址、新增 Pages 一条（含 engine.attach 未释放的提醒）、provideEngine / useDocumentLang 的位置；根目录 `README.md`：Node 版本、地址、路由 / 布局 / 页面三行；`.prompt.md` 改为本任务的计划
+  - 验证（与 main a6f1854 的构建对比）：lint、build 通过；headless Chromium 中 #app 的元素树、class、aria、data-rz 与 style 一致（只多了多根节点组件的两个空文本锚点），7 个网格项位置尺寸完全相同；卡片尺寸刷新后恢复、方向键调整、拖动栏宽、抽屉打开 / Esc 关闭后焦点返回、`/#/nope` 重定向到 `/#/` 均正常；保存的人体模型 xbot 启动时加载，window.stickman 有 setHeartRate / setCamLead；dev 模式无 Vue / 路由报错
