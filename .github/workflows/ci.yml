@@ -1,4 +1,4 @@
-# Lint and build the app on every push to main and on every pull request.
+# Lint, test and build the app on every push to main and on every pull request.
 name: CI
 
 on:
@@ -28,4 +28,5 @@ jobs:
           cache-dependency-path: stickman-preview/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       - run: npm run build

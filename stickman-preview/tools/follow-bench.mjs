@@ -140,7 +140,7 @@ function score(fig, tr, s) {
   let lag = 0, best = Infinity;
   for (let L = -100; L <= 400; L += 5) { const e = rms(pairs(L)); if (e < best) { best = e; lag = L; } }
   // jitter: the figure's acceleration (° per render frame²) while the person is nearly still (< 15 °/s)
-  let jSum = 0, jN = 0, over = 0, range = [Infinity, -Infinity];
+  let jSum = 0, jN = 0, range = [Infinity, -Infinity];
   for (let k = 1; k < fig.length - 1; k++) for (const side of [0, 1]) {
     const a = fig[k - 1].a[s][side], b = fig[k].a[s][side], c = fig[k + 1].a[s][side];
     const g0 = truthAt(tr, dt, fig[k].t - 50, s, side), g1 = truthAt(tr, dt, fig[k].t + 50, s, side);
@@ -158,7 +158,7 @@ function score(fig, tr, s) {
     range = [Math.min(range[0], o), Math.max(range[1], o)];
   }
   ov.sort((x, y) => x - y);
-  over = ov.length ? ov[Math.floor(ov.length * 0.95)] : 0;
+  const over = ov.length ? ov[Math.floor(ov.length * 0.95)] : 0;
   return { lag, err: rms(base), jitter: Math.sqrt(jSum / Math.max(1, jN)), over, range: range[1] - range[0], n: base.length };
 }
 

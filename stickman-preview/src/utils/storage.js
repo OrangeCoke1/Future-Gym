@@ -8,7 +8,7 @@
  * @returns {T}
  */
 export function load(key, sanitize) {
-  let v = null;
+  let v;
   try { v = JSON.parse(localStorage.getItem(key)); } catch { v = null; }
   return sanitize(v);
 }
