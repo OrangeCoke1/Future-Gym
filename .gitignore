@@ -5,3 +5,4 @@ stickman-preview/tools/poses/
 *.log
 .DS_Store
 Thumbs.db
+.idea/
