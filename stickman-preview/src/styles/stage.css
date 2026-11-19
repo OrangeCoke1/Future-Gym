@@ -73,3 +73,8 @@
 .cam-rs[data-c=sw]{left:0;bottom:0;cursor:nesw-resize}
 .cam-rs[data-c=ne]{right:28px;top:0;cursor:nesw-resize}
 .cam-rs[data-c=nw]{left:0;top:0;cursor:nwse-resize}
+/* 保存本组 under the rep counter (logged in) */
+.save-set{pointer-events:auto;align-self:flex-start;margin-top:4px;font-size:12px;padding:4px 12px;border-radius:999px;border:1px solid var(--acc);
+  background:transparent;color:var(--acc);cursor:pointer}
+.save-set:hover:not(:disabled){background:var(--acc);color:var(--ivory)}
+.save-set:disabled{opacity:.4;cursor:default}
