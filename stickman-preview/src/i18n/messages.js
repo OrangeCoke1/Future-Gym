@@ -15,6 +15,7 @@ export const I18N = {
   '训练页加载失败，请重试': ['トレーニング画面を読み込めませんでした。もう一度お試しください', 'Could not open training. Try again.'],
   '进入训练': ['トレーニングへ', 'Start training'],
   '语言': ['言語', 'Language'],
+  '未来健身': ['未来のフィットネス', 'Future Fitness'],
   '未来健身 2126 · 动作识别原型': ['未来のフィットネス 2126 · 動作認識プロトタイプ', 'Future Fitness 2126 · Motion prototype'],
   '未来健身 2126': ['未来のフィットネス 2126', 'Future Fitness 2126'],
   '演示': ['デモ', 'Demo'], '摄像头': ['カメラ', 'Camera'], '镜像': ['ミラー', 'Mirror'], '面板': ['パネル', 'Panel'], '关闭': ['閉じる', 'Close'],
