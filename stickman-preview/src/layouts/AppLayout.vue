@@ -14,6 +14,10 @@ watch(drawerOpen, v => { if (!v && topBar.value) topBar.value.focus(); });
 </script>
 
 <template>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+  >
   <div
     ref="app"
     class="app"

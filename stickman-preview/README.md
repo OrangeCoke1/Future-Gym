@@ -71,8 +71,9 @@ powershell -ExecutionPolicy Bypass -File serve.ps1 -Open
 | 目录 | 内容 |
 | --- | --- |
 | `src/main.js`、`src/App.vue` | 入口。`App.vue` 是空容器：创建引擎（`provideEngine`）、把设置同步给引擎、语言、控制台入口 `window.stickman`，再用 `<RouterView />` 显示当前页面 |
-| `src/router/` | 页面路由（`#/` 地址）。现在只有一个页面：`/` 训练页 |
-| `src/layouts/` | 所有页面共用的外壳 `AppLayout.vue`：整页网格 `.app`、顶栏、右侧面板 |
+| `src/router/` | Hash 路由。根路径 `#/` 是健身舱，`#/training` 懒加载训练页 |
+| `src/lobby/` | 纯 JavaScript 的 `createLobby`、器械表 `STATIONS`、开场时间轴 `phaseAt` 和相机控制 |
+| `src/layouts/` | 训练页外壳 `AppLayout.vue`：整页网格 `.app`、顶栏、右侧面板 |
 | `src/views/` | 每个页面一个 `XxxView.vue`；只在一个页面用的区域放在 `views/<页面>/`（训练页的左栏、舞台、右栏） |
 | `src/composables/` | `useEngine`（引擎和 Vue 之间的桥：`useFrame` 每帧订阅，`live` 是模板要显示的少数几个值）、`useLayout`（可拖动布局：网格、两栏、舞台和卡片的元素用模板 ref 共享，`useCard`、`useSplit`）、`useFloatWin`（摄像头浮窗的移动和缩放）、`useChart`（卡片里的画布尺寸） |
 | `src/core/` | 向量工具（`math.js`）；骨架 `B`、`solve`、`lerpQ`、`angle3`（`skeleton.js`）；12 个动作 `ACT`（`actions.js`） |
@@ -82,13 +83,24 @@ powershell -ExecutionPolicy Bypass -File serve.ps1 -Open
 | `src/charts/` | 卡片上的 2D 图：心率、能量、趋势、量角器、重心、关节负荷、体表热量（`therm.js` 的 `THERM`、`OUTLINE_R`） |
 | `src/engine/` | 每帧主循环 `createEngine`（`engine.js`）、计数规则（`reps.js`）、动作复现的相位同步（`phaseSync.js`）、摄像头输入（`camera.js`）。主循环不依赖 Vue，所有状态在一个普通对象 `S` 里，每帧原地更新；界面只通过引擎的方法改它 |
 | `src/components/` | Vue 组件：顶栏、底栏、舞台和舞台上的读数、左右两栏的卡片、面板（显示、摄像头跟随、个人资料、本次训练、数据说明）、拖动手柄 |
-| `src/stores/` | Pinia：设置（语言、显示开关、布局、摄像头浮窗、摄像头模式与跟随参数、识别精度、深蹲识别、手部识别、人体模型）、个人资料、饮水记录；本机存储沿用原来的 `stick.*` 键，读取时先校验，数据损坏时用默认值。设置由 `App.vue` 统一同步给引擎，组件只改设置 |
+| `src/stores/` | Pinia：设置（语言、显示开关、布局、摄像头浮窗、摄像头模式与跟随参数、识别精度、深蹲识别、手部识别、人体模型）、个人资料、饮水记录、访问期间的 `introSeen`；本机存储沿用原来的 `stick.*` 键，读取时先校验，数据损坏时用默认值。设置由 `App.vue` 统一同步给引擎，组件只改设置 |
 | `src/i18n/` | vue-i18n；翻译表 `I18N`（`messages.js`）和 `useI18n()` |
 | `src/styles/` | 原来的样式表，按区域拆成几个文件 |
 
-字体 Unbounded、Inter 和 Noto Sans SC 走 Google Fonts；离线时会退回系统字体，功能不受影响。
+训练页进入后加载 Google Fonts，离线时回退到系统字体。胶囊大厅使用系统字体和程序化几何。高画质在后台复用训练页的人体模型生成全息点云。
 
-主循环每帧做的事出错时（包括某张卡片的每帧回调出错），会在控制台打一条 `[engine] … failed`（同样的错误最多每 2 秒一条），下一帧照常运行，页面不会整个卡住。舞台组件卸载时（以后换页面）会释放 WebGL 上下文（`engine.detach()`、`stage.dispose()`），回来时重新创建，外观、颜色和人体模型保持不变。
+主循环每帧做的事出错时（包括某张卡片的每帧回调出错），会在控制台打一条 `[engine] … failed`（同样的错误最多每 2 秒一条），下一帧照常运行，页面不会整个卡住。训练舞台卸载时会释放 WebGL 上下文（`engine.detach()`、`stage.dispose()`），回来时重新创建，外观、颜色和人体模型保持不变。
+
+## 胶囊大厅
+
+打开 `#/` 播放 4.6 秒开场。横置胶囊的圆门先弹出再向两侧滑开，镜头穿过门内灯光，进入淡紫色健身舱。点击画面、按键或用「跳过」可立即进入大厅。系统启用减少动态效果时直接显示大厅，选站后立即导航。同一次访问内返回大厅会跳过开场，刷新后重播。
+
+- 舱内采用程序化环灯、圆角全景窗和紫色黄昏城市景观。跑台摆在窗前，拉索力量架与训练椅在右侧，训练垫在前方，哑铃收纳和演示体征屏在左侧。拖动可环顾大厅。
+- 点击器械、右墙图标或底部按钮进入对应训练，自动选中默认动作。悬停或以 Tab 键聚焦入口会点亮对应灯带并显示名称与动作，按 Enter 进入训练。窄屏保留底部的四个入口。
+- 展会直达 `#/training`。指定动作可用 `#/training?act=jog`，`TrainingView` 只接受 `ACT` 中有效的单个动作键。
+- 宽屏且设备支持 HDR 时使用高画质，启用环境反射、实时阴影、轻微泛光和体征屏上的点云人形。`post.js` 在线性 HDR 空间混合泛光，最后统一做 ACES 色调映射和 sRGB 输出。窄屏、低内存或首两秒平均帧时超过 28 ms 时降低画质，保留接触阴影和体征屏上的人形轮廓。
+- `STATIONS` 定义有氧跑台（`jog`）、深蹲架（`squat`）、哑铃区（`curl`）和体能垫（`jacks`）。`phaseAt` 驱动开场，`createLobby` 负责画面、选站和 WebGL 资源回收，`LobbyHud` 显示三语入口并通过模板引用定位标签。
+- 大厅暂停训练引擎。离开训练页时释放摄像头，回到训练页时恢复已选中的摄像头模式。大厅先释放自己的 WebGL，再恢复训练引擎。无 WebGL 时仍可通过 CSS 开场后的四个按钮进入。
 
 ## 使用
 

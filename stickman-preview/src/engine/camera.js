@@ -12,7 +12,7 @@ import { ingestHands, drawHands, resetHands, loadHandLandmarker } from '../pose/
 export function createCamera({ onResult, onStatus, onShow, onFail }) {
   const cam = createCamPose();
   let lm = null, loading = null, stream = null, tk = 0, rvfc = false, vt = -1, lastTs = 0, fps = 0, fpsT = 0, mirror = true;
-  let video = null, g = null, framing = () => 'NO_PERSON';
+  let video = null, g = null, frameRequest = null, framing = () => 'NO_PERSON';
   // hands (面板 → 手部识别): a second landmarker on the same frames, loaded the first time it is switched on
   let handsOn = false, hlm = null, hLoading = null;
   let model = 'heavy', lmModel = null;           // pose model (面板 → 识别精度); a switch reloads it
@@ -33,10 +33,22 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
   }
   function watch(t) {
     if (!video.requestVideoFrameCallback) return;
-    const step = () => { if (t !== tk) return; frame(); video.requestVideoFrameCallback(step); };
-    rvfc = true; video.requestVideoFrameCallback(step);
+    const step = () => {
+      frameRequest = null;
+      if (t !== tk) return;
+      frame();
+      frameRequest = video.requestVideoFrameCallback(step);
+    };
+    rvfc = true;
+    frameRequest = video.requestVideoFrameCallback(step);
+  }
+  function cancelWatch() {
+    if (frameRequest !== null) video.cancelVideoFrameCallback(frameRequest);
+    frameRequest = null;
+    rvfc = false;
   }
   async function start() {
+    cancelWatch();
     const t = ++tk, stale = () => t !== tk;
     camSeed(cam); onStatus('请允许使用摄像头…');
     try {
@@ -46,6 +58,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
       const s = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: 'user', ...size } });
       if (stale()) { s.getTracks().forEach(tr => tr.stop()); return; }
       stream = s; video.srcObject = s; await video.play();
+      if (stale()) return;
       const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
       if (g) { g.canvas.width = 640; g.canvas.height = Math.round(640 * vh / vw); }
       cam.aspect = vw / vh;
@@ -95,11 +108,11 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
     if (on === handsOn) return;
     handsOn = on; resetHands(cam.hands);
     if (!stream) return;
-    stream.getTracks().forEach(tr => tr.stop()); stream = null; rvfc = false;
+    stream.getTracks().forEach(tr => tr.stop()); stream = null;
     start();
   }
   function stop() {
-    tk++; cam.lm2d = null; rvfc = false;
+    tk++; cam.lm2d = null; cancelWatch();
     if (stream) stream.getTracks().forEach(tr => tr.stop());
     stream = null; if (video) video.srcObject = null; onShow(null); onStatus('');
   }
@@ -116,7 +129,7 @@ export function createCamera({ onResult, onStatus, onShow, onFail }) {
   return {
     pose: cam, start, stop, tick, setHands, setModel,
     /** the preview's video element and its 2D check canvas */
-    attach(v, c) { video = v; g = c.getContext('2d'); },
+    attach(v, c) { video = v; g = c?.getContext('2d') ?? null; },
     /** where the recognition's framing state comes from (FIT), for the status line */
     framingFrom(f) { framing = f; },
     setMirror(v) { mirror = v; camSeed(cam); }

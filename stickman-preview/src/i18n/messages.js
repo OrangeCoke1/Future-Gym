@@ -12,6 +12,7 @@ export const I18N = {
   '哑铃区': ['ダンベルエリア', 'Dumbbell zone'],
   '体能垫': ['コンディショニングマット', 'Conditioning mat'],
   '← 健身舱': ['← カプセル', '← Capsule'],
+  '训练页加载失败，请重试': ['トレーニング画面を読み込めませんでした。もう一度お試しください', 'Could not open training. Try again.'],
   '进入训练': ['トレーニングへ', 'Start training'],
   '语言': ['言語', 'Language'],
   '未来健身 2126 · 动作识别原型': ['未来のフィットネス 2126 · 動作認識プロトタイプ', 'Future Fitness 2126 · Motion prototype'],
