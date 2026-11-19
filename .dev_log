@@ -175,3 +175,7 @@
 ## [2026-11-19 18:48] Interactive procedural gym room
 - **Goal**: Add an asset-free Three.js lobby with accessible station picking.
 - **Changes**: Room geometry, equipment and rings, camera rig, pointer and keyboard interaction, projected HUD labels, WebGL lifecycle and fallback.
+
+## [2026-11-19 18:51] Opening the capsule
+- **Goal**: Run the 4.3-second opening on first entry and offer an immediate skip.
+- **Changes**: Lathe capsule, articulated lid, sweep, glow and mist; pure intro timeline and tests; room dissolve; session state, skip, reduced motion and CSS fallback.

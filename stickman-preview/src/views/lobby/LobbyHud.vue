@@ -1,13 +1,16 @@
 <script setup>
+import { ref } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { ACT } from '../../core/actions.js';
 import { STATIONS } from '../../lobby/stations.js';
 
 defineProps({
+  ready: { type: Boolean, required: true },
   fallback: { type: Boolean, required: true },
   active: { type: String, default: null },
 });
 const emit = defineEmits({
+  skip: null,
   pick: station => STATIONS.includes(station),
   highlight: id => id === null || STATIONS.some(s => s.id === id),
 });
@@ -15,6 +18,8 @@ const { t, lang } = useI18n();
 const languages = [['zh', 'zh-CN', '中文'], ['ja', 'ja', '日本語'], ['en', 'en', 'EN']];
 
 const labels = new Map();
+const footer = ref(null);
+function reveal(opacity) { footer.value?.style.setProperty('--reveal', opacity); }
 function setLabel(id, el) {
   if (el) labels.set(id, el);
   else labels.delete(id);
@@ -28,7 +33,7 @@ function positionLabels(positions) {
     el.style.visibility = visible ? 'visible' : 'hidden';
   }
 }
-defineExpose({ positionLabels });
+defineExpose({ positionLabels, reveal });
 </script>
 
 <template>
@@ -58,11 +63,11 @@ defineExpose({ positionLabels });
       </div>
     </header>
     <div
-      v-if="fallback"
+      v-if="fallback && !ready"
       class="lobby-capsule"
       aria-hidden="true"
     >
-      <i /><i />
+      <i /><i @animationend.self="emit('skip')" />
     </div>
     <div
       v-for="station in STATIONS"
@@ -77,7 +82,20 @@ defineExpose({ positionLabels });
         <span>{{ station.acts.map(key => t(ACT[key].name)).join(' · ') }}</span>
       </div>
     </div>
-    <footer class="lobby-footer">
+    <button
+      v-if="!ready"
+      class="btn lobby-skip"
+      type="button"
+      @click="emit('skip')"
+    >
+      {{ t('跳过') }}
+    </button>
+    <footer
+      ref="footer"
+      class="lobby-footer"
+      :class="{ 'is-ready': ready }"
+      :aria-hidden="!ready"
+    >
       <p>{{ t(fallback ? '选择器械开始训练' : '拖动查看 · 点击器械开始训练') }}</p>
       <div
         class="lobby-stations"
@@ -90,6 +108,7 @@ defineExpose({ positionLabels });
           type="button"
           :aria-label="`${t(station.name)} · ${t('进入训练')}: ${t(ACT[station.act].name)}`"
           :class="{ 'is-active': station.id === active }"
+          :disabled="!ready"
           @click="emit('pick', station)"
           @focus="emit('highlight', station.id)"
           @blur="emit('highlight', null)"

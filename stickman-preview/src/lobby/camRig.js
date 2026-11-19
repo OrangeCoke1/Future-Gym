@@ -17,6 +17,15 @@ export function roomFraming(aspect) {
   return { z, fov };
 }
 
+export function frameCapsule(camera, aspect, dolly) {
+  camera.aspect = aspect;
+  camera.fov = 36;
+  const distance = Math.max(5.6, 2.1 / aspect);
+  camera.position.set(0.12 * (1 - dolly), 1.5 + 0.48 * dolly, MathUtils.lerp(distance, -0.9, dolly));
+  camera.lookAt(0, 1.5 + 0.32 * dolly, -1.2);
+  camera.updateProjectionMatrix();
+}
+
 export function createCamRig(camera) {
   const home = new Vector3(0, 3.6, 7.2);
   const target = new Vector3();
@@ -38,12 +47,13 @@ export function createCamRig(camera) {
 
   function release() { wantYaw = wantPitch = 0; }
 
-  function apply(dt) {
+  function apply(dt, approach = 0) {
     const mix = 1 - Math.pow(0.92, dt * 60);
     yaw = MathUtils.lerp(yaw, wantYaw, mix);
     pitch = MathUtils.lerp(pitch, wantPitch, mix);
     right.set(Math.cos(yaw), 0, -Math.sin(yaw));
     camera.position.copy(home).sub(pivot).applyAxisAngle(up, yaw).applyAxisAngle(right, pitch).add(pivot);
+    camera.position.z += approach;
     target.copy(aim).sub(pivot).applyAxisAngle(up, yaw * 0.36).applyAxisAngle(right, pitch * 0.36).add(pivot);
     camera.lookAt(target);
   }

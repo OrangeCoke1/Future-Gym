@@ -1,18 +1,21 @@
 import * as THREE from 'three';
-import { createCamRig } from './camRig.js';
-import { buildGymRoom } from './gymRoom.js';
+import { buildCapsule } from './capsule.js';
+import { INTRO_END, phaseAt, stationRevealAt } from './timeline.js';
+import { createCamRig, frameCapsule } from './camRig.js';
+import { DARK, buildGymRoom, lightRoom } from './gymRoom.js';
 import { buildStation } from './stationMesh.js';
 import { STATIONS } from './stations.js';
 
 /**
  * @typedef {{ id: string, x: number, y: number, visible: boolean }} LabelPosition
  * @param {{
- *   canvas: HTMLCanvasElement, reduced: boolean, onHover: (id: string|null) => void,
+ *   canvas: HTMLCanvasElement, reduced: boolean, skipIntro: boolean,
+ *   onReady: () => void, onReveal: (opacity: number) => void, onHover: (id: string|null) => void,
  *   onPick: (station: import('./stations.js').Station) => void, onLabels: (labels: LabelPosition[]) => void,
  *   onUnavailable: () => void
  * }} options
  */
-export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnavailable }) {
+export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onHover, onPick, onLabels, onUnavailable }) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -27,6 +30,23 @@ export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnav
   const rig = createCamRig(camera);
   const stations = STATIONS.map(buildStation);
   scene.add(...stations.map(s => s.group));
+
+  let introTime = reduced || skipIntro ? INTRO_END : 0;
+  let ready = introTime === INTRO_END;
+  const intro = new THREE.Scene();
+  const blend = new THREE.Scene();
+  const introCamera = new THREE.PerspectiveCamera(36, 1, 0.045, 28);
+  const screenCamera = new THREE.Camera();
+  const target = ready ? null : new THREE.WebGLRenderTarget(1, 1);
+  let animateCapsule;
+  if (target) {
+    intro.background = new THREE.Color(DARK);
+    lightRoom(intro);
+    animateCapsule = buildCapsule(intro);
+    blend.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({
+      map: target.texture, transparent: true, depthTest: false, depthWrite: false,
+    })));
+  }
 
   const cold = new THREE.Color('#9ce4ed');
   const hot = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#E0704A');
@@ -59,7 +79,7 @@ export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnav
 
   function pickById(id) {
     const station = STATIONS.find(s => s.id === id);
-    if (station) onPick(station);
+    if (station && ready) onPick(station);
   }
 
   function hitAt(x, y) {
@@ -72,7 +92,49 @@ export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnav
     return hits[0]?.object.userData.station ?? null;
   }
 
+  function revealRoom() {
+    if (ready) return;
+    ready = true;
+    introTime = INTRO_END;
+    for (const s of stations) s.group.position.y = 0;
+    onReveal(1);
+    onReady();
+  }
+
+  function drawIntro(dt) {
+    const phase = phaseAt(introTime);
+    if (phase.ready) {
+      revealRoom();
+      return false;
+    }
+    onReveal(phase.reveal);
+    if (phase.dolly < 1) {
+      frameCapsule(introCamera, width / height, phase.dolly);
+      animateCapsule(introTime, phase);
+    }
+    if (phase.dolly === 0) {
+      renderer.render(intro, introCamera);
+    } else {
+      rig.apply(dt, (1 - phase.dolly) * 1.7);
+      for (const [i, s] of stations.entries()) s.group.position.y = (stationRevealAt(introTime, i) - 1) * 2.2;
+      if (phase.dolly < 1) {
+        renderer.setRenderTarget(target);
+        renderer.render(intro, introCamera);
+        renderer.setRenderTarget(null);
+      }
+      renderer.render(scene, camera);
+      if (phase.dolly < 1) {
+        blend.children[0].material.opacity = 1 - phase.dolly;
+        renderer.autoClear = false;
+        renderer.render(blend, screenCamera);
+        renderer.autoClear = true;
+      }
+    }
+    return true;
+  }
+
   function draw(dt) {
+    if (!ready && drawIntro(dt)) return;
     rig.apply(dt);
     if (!reduced) dust.rotation.y = Math.sin(time * 0.09) * 0.14;
     renderer.render(scene, camera);
@@ -95,6 +157,7 @@ export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnav
     const dt = last === null ? 0 : (now - last) / 1000;
     last = now;
     time += dt;
+    if (!ready) introTime += dt;
     draw(dt);
     raf = requestAnimationFrame(tick);
   }
@@ -114,11 +177,18 @@ export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnav
     renderer.setPixelRatio(width < 860 ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(width, height, false);
     rig.resize(width / height);
+    if (!ready) target.setSize(Math.ceil(width), Math.ceil(height));
+    if (!document.hidden) draw(0);
+  }
+
+  function skip() {
+    if (ready) return;
+    revealRoom();
     if (!document.hidden) draw(0);
   }
 
   function down(event) {
-    if (drag || event.button !== 0) return;
+    if (!ready || drag || event.button !== 0) return;
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, moved: false };
     canvas.setPointerCapture(event.pointerId);
     canvas.style.cursor = 'grabbing';
@@ -181,16 +251,18 @@ export function createLobby({ canvas, reduced, onHover, onPick, onLabels, onUnav
     for (const [name, fn] of Object.entries(events)) canvas.removeEventListener(name, fn);
     document.removeEventListener('visibilitychange', visibility);
     const resources = new Set();
-    scene.traverse(obj => {
+    const collect = obj => {
       if (obj.geometry) resources.add(obj.geometry);
       if (!obj.material) return;
       resources.add(obj.material);
-      for (const value of Object.values(obj.material)) if (value?.isTexture) resources.add(value);
-    });
+      for (const value of Object.values(obj.material)) if (value?.isTexture && value !== target?.texture) resources.add(value);
+    };
+    for (const world of [scene, intro, blend]) world.traverse(collect);
+    target?.dispose();
     for (const res of resources) res.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
   }
 
-  return { start, stop, resize, highlight, pickById, dispose };
+  return { start, stop, resize, skip, highlight, pickById, dispose };
 }

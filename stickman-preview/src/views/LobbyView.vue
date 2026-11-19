@@ -12,8 +12,14 @@ const visit = useLobby();
 const canvas = ref(null);
 const hud = ref(null);
 const fallback = ref(false);
+const ready = ref(false);
 const active = ref(null);
 let lobby, observer;
+
+function finishIntro() {
+  visit.introSeen = true;
+  ready.value = true;
+}
 
 function unavailable() {
   lobby = null;
@@ -21,13 +27,28 @@ function unavailable() {
   fallback.value = true;
 }
 
+function skip() {
+  if (ready.value) return;
+  if (lobby) lobby.skip();
+  else finishIntro();
+}
+
+function skipOnKey(event) {
+  if (ready.value || event.isComposing) return;
+  if (event.key === 'Escape' || event.code === 'Space') event.preventDefault();
+  skip();
+}
 
 onMounted(() => {
   engine.stop();
-  visit.introSeen = true;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || visit.introSeen) finishIntro();
   lobby = createLobby({
     canvas: canvas.value,
-    reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    reduced,
+    skipIntro: ready.value,
+    onReady: finishIntro,
+    onReveal: opacity => hud.value?.reveal(opacity),
     onHover: id => { active.value = id; },
     onLabels: labels => hud.value?.positionLabels(labels),
     onPick: enter,
@@ -41,9 +62,12 @@ onMounted(() => {
     fit();
     lobby.start();
   }
+  window.addEventListener('keydown', skipOnKey);
   import('./TrainingView.vue').catch(() => {}); // Router retries the load on navigation.
 });
+
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', skipOnKey);
   observer?.disconnect();
   lobby?.dispose();
   engine.start();
@@ -60,7 +84,10 @@ function enter(station) {
 </script>
 
 <template>
-  <main class="lobby">
+  <main
+    class="lobby"
+    @click.capture="skip"
+  >
     <canvas
       ref="canvas"
       class="lobby-world"
@@ -70,7 +97,9 @@ function enter(station) {
     <LobbyHud
       ref="hud"
       :fallback="fallback"
+      :ready="ready"
       :active="active"
+      @skip="skip"
       @pick="pick"
       @highlight="lobby?.highlight($event)"
     />
