@@ -17,10 +17,18 @@ export function roomFraming(aspect) {
   return { z, fov };
 }
 
+export function stationApproach(angle) {
+  const center = stationPosition(angle);
+  const end = center.clone().multiplyScalar(0.6);
+  end.y = 1.3;
+  center.y = 0.9;
+  return { end, center };
+}
+
 export function frameCapsule(camera, aspect, dolly) {
   camera.aspect = aspect;
   camera.fov = 36;
-  const distance = Math.max(5.6, 2.1 / aspect);
+  const distance = Math.max(7.4, 2.35 / aspect);
   camera.position.set(0.12 * (1 - dolly), 1.5 + 0.48 * dolly, MathUtils.lerp(distance, -0.9, dolly));
   camera.lookAt(0, 1.5 + 0.32 * dolly, -1.2);
   camera.updateProjectionMatrix();
@@ -47,8 +55,8 @@ export function createCamRig(camera) {
 
   function release() { wantYaw = wantPitch = 0; }
 
-  function apply(dt, approach = 0) {
-    const mix = 1 - Math.pow(0.92, dt * 60);
+  function apply(dt, approach = 0, instant = false) {
+    const mix = instant ? 1 : 1 - Math.pow(0.92, dt * 60);
     yaw = MathUtils.lerp(yaw, wantYaw, mix);
     pitch = MathUtils.lerp(pitch, wantPitch, mix);
     right.set(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -58,5 +66,14 @@ export function createCamRig(camera) {
     camera.lookAt(target);
   }
 
-  return { resize, drag, release, apply };
+  function flightTo(station) {
+    const from = camera.position.clone(), lookFrom = target.clone();
+    const { end, center } = stationApproach(station.angle);
+    return progress => {
+      camera.position.lerpVectors(from, end, progress);
+      camera.lookAt(target.lerpVectors(lookFrom, center, progress));
+    };
+  }
+
+  return { resize, drag, release, apply, flightTo };
 }

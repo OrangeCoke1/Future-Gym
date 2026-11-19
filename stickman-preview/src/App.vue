@@ -1,6 +1,6 @@
 <script setup>
 // Thin container: app-wide setup (engine with the persisted settings, language, console hook) lives here and
-// outlives page navigation; the current route (AppLayout + a page from views/) renders through <RouterView />.
+// outlives page navigation; the current route (standalone lobby or training inside AppLayout) renders through <RouterView />.
 import { watch } from 'vue';
 import { provideEngine } from './composables/useEngine.js';
 import { useDocumentLang } from './i18n/useI18n.js';

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { color } from './gymRoom.js';
 import { stationPosition } from './camRig.js';
 
 export function buildStation(station) {
@@ -6,12 +7,12 @@ export function buildStation(station) {
   group.position.copy(stationPosition(station.angle));
   group.rotation.y = -THREE.MathUtils.degToRad(station.angle) * 0.25;
 
-  const frame = new THREE.MeshStandardMaterial({ color: '#afbdad', metalness: 0.38, roughness: 0.42 });
-  const rubber = new THREE.MeshStandardMaterial({ color: '#24323a', roughness: 0.88 });
-  const signal = new THREE.MeshBasicMaterial({ color: '#9ce4ed' });
+  const frame = new THREE.MeshStandardMaterial({ color: color('#afbdad'), metalness: 0.38, roughness: 0.42 });
+  const rubber = new THREE.MeshStandardMaterial({ color: color('#24323a'), roughness: 0.88 });
+  const signal = new THREE.MeshBasicMaterial({ color: color('#9ce4ed') });
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(1.07, 48),
-    new THREE.MeshBasicMaterial({ color: '#10181c', transparent: true, opacity: 0.55, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: color('#10181c'), transparent: true, opacity: 0.55, depthWrite: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.01;
@@ -35,7 +36,7 @@ export function buildStation(station) {
   const ring = part(new THREE.TorusGeometry(0.893, 0.024, 6, 48), signal, 0, 0.162, 0);
   ring.rotation.x = -Math.PI / 2;
   const beacon = part(new THREE.TorusGeometry(0.918, 0.031, 6, 48), new THREE.MeshBasicMaterial({
-    color: '#9ce4ed', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false,
+    color: color('#9ce4ed'), transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false,
   }), 0, 0.156, 0);
   beacon.rotation.x = -Math.PI / 2;
 
@@ -80,7 +81,7 @@ export function buildStation(station) {
     block(0, 0.20, 0, 0.77, 0.07, 1.4);
     block(0, 0.243, 0, 0.69, 0.03, 1.32, rubber);
     for (const side of [-1, 1]) block(side * 0.302, 0.262, 0, 0.019, 0.012, 1.19, signal);
-    const lattice = new THREE.MeshBasicMaterial({ color: '#7bd3e4', wireframe: true, transparent: true, opacity: 0.75 });
+    const lattice = new THREE.MeshBasicMaterial({ color: color('#7bd3e4'), wireframe: true, transparent: true, opacity: 0.75 });
     part(new THREE.IcosahedronGeometry(0.13, 1), lattice, 0, 1.43, 0);
     part(new THREE.CapsuleGeometry(0.13, 0.31, 4, 10), lattice, 0, 1.04, 0);
     for (const side of [-1, 1]) {

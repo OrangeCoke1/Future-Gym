@@ -1,11 +1,13 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { ACT } from '../../core/actions.js';
 import { STATIONS } from '../../lobby/stations.js';
 
 defineProps({
   ready: { type: Boolean, required: true },
+  busy: { type: Boolean, required: true },
+  navigationFailed: { type: Boolean, required: true },
   fallback: { type: Boolean, required: true },
   active: { type: String, default: null },
 });
@@ -17,6 +19,8 @@ const emit = defineEmits({
 const { t, lang } = useI18n();
 const languages = [['zh', 'zh-CN', '中文'], ['ja', 'ja', '日本語'], ['en', 'en', 'EN']];
 
+const focus = ref(null), hover = ref(null);
+watch(() => focus.value ?? hover.value, id => emit('highlight', id));
 const labels = new Map();
 const footer = ref(null);
 function reveal(opacity) { footer.value?.style.setProperty('--reveal', opacity); }
@@ -29,7 +33,8 @@ function positionLabels(positions) {
   for (const { id, x, y, visible } of positions) {
     const el = labels.get(id);
     if (!el) continue;
-    el.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+    const horizontal = `clamp(84px, ${Math.round(x)}px, 100vw - 84px)`;
+    el.style.transform = `translate3d(${horizontal}, ${Math.round(y)}px, 0)`;
     el.style.visibility = visible ? 'visible' : 'hidden';
   }
 }
@@ -96,7 +101,15 @@ defineExpose({ positionLabels, reveal });
       :class="{ 'is-ready': ready }"
       :aria-hidden="!ready"
     >
-      <p>{{ t(fallback ? '选择器械开始训练' : '拖动查看 · 点击器械开始训练') }}</p>
+      <p
+        v-if="navigationFailed"
+        role="status"
+      >
+        {{ t('训练页加载失败，请重试') }}
+      </p>
+      <p v-else>
+        {{ t(fallback ? '选择器械开始训练' : '拖动查看 · 点击器械开始训练') }}
+      </p>
       <div
         class="lobby-stations"
         role="group"
@@ -108,12 +121,12 @@ defineExpose({ positionLabels, reveal });
           type="button"
           :aria-label="`${t(station.name)} · ${t('进入训练')}: ${t(ACT[station.act].name)}`"
           :class="{ 'is-active': station.id === active }"
-          :disabled="!ready"
+          :disabled="!ready || busy"
           @click="emit('pick', station)"
-          @focus="emit('highlight', station.id)"
-          @blur="emit('highlight', null)"
-          @pointerenter="emit('highlight', station.id)"
-          @pointerleave="emit('highlight', null)"
+          @focus="focus = station.id"
+          @blur="focus = null"
+          @pointerenter="hover = station.id"
+          @pointerleave="hover = null"
         >
           <strong>{{ t(station.name) }}</strong>
           <span>{{ t(ACT[station.act].name) }}</span>
