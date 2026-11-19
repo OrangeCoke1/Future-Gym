@@ -2,12 +2,16 @@ import * as THREE from 'three';
 import { buildCapsule } from './capsule.js';
 import { FLIGHT_END, INTRO_END, flightAt, phaseAt, stationRevealAt } from './timeline.js';
 import { createCamRig, frameCapsule } from './camRig.js';
-import { DARK, buildGymRoom, color, lightRoom } from './gymRoom.js';
-import { buildStation } from './stationMesh.js';
+import { buildGymRoom } from './gymRoom.js';
+import { ACCENT, color, createEquipmentMaterials } from './materials.js';
+import { createBloom, createEnvironment, supportsHdr } from './post.js';
+import { buildStation, createBayMaterials } from './stationMesh.js';
 import { STATIONS } from './stations.js';
+import { createLobbyTextures } from './textures.js';
+
+/** @typedef {{ id: string, x: number, y: number, visible: boolean }} LabelPosition */
 
 /**
- * @typedef {{ id: string, x: number, y: number, visible: boolean }} LabelPosition
  * @param {{
  *   canvas: HTMLCanvasElement, reduced: boolean, skipIntro: boolean,
  *   onReady: () => void, onReveal: (opacity: number) => void, onHover: (id: string|null) => void,
@@ -25,53 +29,59 @@ export function createLobby({
     return null;
   }
   renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.physicallyCorrectLights = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
 
+  const memory = navigator.deviceMemory;
+  const canBloom = renderer.capabilities.isWebGL2 && supportsHdr(renderer);
+  const suitedForHigh = w => w >= 860 && (memory === undefined || memory >= 4) && canBloom;
+  const detailed = suitedForHigh(canvas.clientWidth);
+  const textures = createLobbyTextures(detailed);
+  const materials = createEquipmentMaterials(textures);
+  const bayMaterials = createBayMaterials(textures);
+  const environment = createEnvironment(renderer);
   const scene = new THREE.Scene();
-  const dust = buildGymRoom(scene);
-  const camera = new THREE.PerspectiveCamera(44, 1, 0.05, 42);
+  const intro = new THREE.Scene();
+  scene.environment = intro.environment = environment?.texture ?? null;
+  const key = buildGymRoom(scene, textures, materials, detailed);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 45);
   const rig = createCamRig(camera);
-  const stations = STATIONS.map(buildStation);
+  const accent = color(getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || ACCENT);
+  const stations = STATIONS.map(station => buildStation(station, { detailed, materials, bayMaterials, textures, accent }));
   scene.add(...stations.map(s => s.group));
 
   let introTime = reduced || skipIntro ? INTRO_END : 0;
   let ready = introTime === INTRO_END;
-  const intro = new THREE.Scene();
-  const blend = new THREE.Scene();
-  const introCamera = new THREE.PerspectiveCamera(36, 1, 0.045, 28);
+  let inRoom = ready;
+  if (inRoom) canvas.classList.add('is-in-room');
+  let capsule = ready ? null : buildCapsule(intro, textures, detailed);
+  const introCamera = new THREE.PerspectiveCamera(36, 1, 0.038, 70);
+  const overlay = new THREE.Scene();
   const screenCamera = new THREE.Camera();
-  let target = ready ? null : new THREE.WebGLRenderTarget(1, 1);
-  let animateCapsule;
-  if (target) {
-    intro.background = new THREE.Color(DARK);
-    lightRoom(intro);
-    animateCapsule = buildCapsule(intro);
-    blend.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({
-      map: target.texture, transparent: true, depthTest: false, depthWrite: false,
-    })));
-  }
+  let flash = capsule ? new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({
+    transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
+  })) : null;
+  const warmWhite = color('#FFF8EE');
+  if (flash) overlay.add(flash);
 
-  const cold = color('#9ce4ed');
-  const hot = color(getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#E0704A');
   const colliders = stations.map(s => s.collider);
   const labels = STATIONS.map(({ id }) => ({ id, x: 0, y: 0, visible: false }));
   const projected = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
   const hits = [];
-  let width = 1, height = 1, raf = null, last = null, time = 0, disposed = false;
+  let width = 0, height = 0, raf = null, last = null, time = 0, disposed = false;
   let drag = null, active = null, focus = null, hover = null, mouse = null;
   let flight = null;
+  let high = false, autoLow = false, bloom, sampledSeconds = 0, sampledFrames = 0;
 
   function updateHighlight() {
     const id = focus ?? hover;
     if (id === active) return;
     active = id;
-    for (const [i, s] of stations.entries()) {
-      const lit = STATIONS[i].id === id;
-      s.ring.color.copy(lit ? hot : cold);
-      s.beacon.color.copy(s.ring.color);
-      s.beacon.opacity = lit ? 0.65 : 0.25;
-    }
     onHover(id);
   }
 
@@ -106,44 +116,93 @@ export function createLobby({
     return hits[0]?.object.userData.station ?? null;
   }
 
+  function disposeBloom() {
+    bloom?.dispose();
+    bloom = null;
+  }
+
+  function resizeRenderer() {
+    const next = suitedForHigh(width) && !autoLow;
+    if (next !== high) {
+      high = next;
+      renderer.shadowMap.enabled = high;
+      renderer.shadowMap.needsUpdate = high;
+      for (const station of stations) station.quality(high);
+      if (!high) {
+        disposeBloom();
+        key.shadow.dispose();
+        key.shadow.map = null;
+      }
+    }
+    renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio || 1, 1.75) : 1);
+    renderer.setSize(width, height, false);
+    bloom?.resize(width, height);
+  }
+
+  function render(world, view, dt) {
+    if (!high) {
+      renderer.render(world, view);
+      return;
+    }
+    if (!bloom) {
+      bloom = createBloom(renderer, world, view);
+      bloom.resize(width, height);
+    }
+    bloom.render(world, view, dt);
+  }
+
+  function showRoom() {
+    inRoom = true;
+    canvas.classList.add('is-in-room');
+    renderer.shadowMap.needsUpdate = high;
+  }
+
   function revealRoom() {
     if (ready) return;
     ready = true;
     introTime = INTRO_END;
-    for (const s of stations) s.group.position.y = 0;
+    if (!inRoom) showRoom();
     freeIntro();
     onReveal(1);
     onReady();
   }
 
+  function updateEquipment(dt, progress = 0, entering = false) {
+    for (const [i, station] of stations.entries()) {
+      const id = STATIONS[i].id;
+      const reveal = entering ? stationRevealAt(introTime, i) : 1;
+      const beamFocus = flight ? (flight.station.id === id ? 0.6 : -0.5) * progress : 0;
+      const moved = station.update(dt, time, reveal, id === active, beamFocus, high, reduced);
+      if (moved && high) renderer.shadowMap.needsUpdate = true;
+    }
+  }
+
   function drawIntro(dt) {
     const phase = phaseAt(introTime);
-    if (phase.ready) {
+    if (phase.ready && inRoom) {
       revealRoom();
       return false;
     }
     onReveal(phase.reveal);
-    if (phase.dolly < 1) {
-      frameCapsule(introCamera, width / height, phase.dolly);
-      animateCapsule(introTime, phase);
-    }
-    if (phase.dolly === 0) {
-      renderer.render(intro, introCamera);
+    const cutting = phase.room && !inRoom;
+    if (phase.room) {
+      if (cutting) showRoom();
+      rig.apply(dt, phase.pullback);
+      updateEquipment(dt, 0, true);
+      render(scene, camera, dt);
     } else {
-      rig.apply(dt, (1 - phase.dolly) * 1.7);
-      for (const [i, s] of stations.entries()) s.group.position.y = (stationRevealAt(introTime, i) - 1) * 2.2;
-      if (phase.dolly < 1) {
-        renderer.setRenderTarget(target);
-        renderer.render(intro, introCamera);
-        renderer.setRenderTarget(null);
-      }
-      renderer.render(scene, camera);
-      if (phase.dolly < 1) {
-        blend.children[0].material.opacity = 1 - phase.dolly;
-        renderer.autoClear = false;
-        renderer.render(blend, screenCamera);
-        renderer.autoClear = true;
-      }
+      capsule.update(introTime, phase);
+      frameCapsule(introCamera, width / height, phase, capsule.pod);
+      render(intro, introCamera, dt);
+    }
+
+    const opacity = cutting ? 1 : Math.max(phase.flash, 1 - phase.fadeIn);
+    if (opacity > 0) {
+      flash.material.color.copy(warmWhite).multiplyScalar(Number(phase.fadeIn === 1));
+      flash.material.opacity = opacity;
+      renderer.autoClear = false;
+      renderer.render(overlay, screenCamera);
+      renderer.autoClear = true;
     }
     return true;
   }
@@ -154,17 +213,18 @@ export function createLobby({
       const elapsed = time - flight.start;
       const { position, fade } = flightAt(elapsed);
       flight.frame(position);
+      updateEquipment(dt, position);
       onFade(fade);
-      renderer.render(scene, camera);
+      render(scene, camera, dt);
       if (elapsed >= FLIGHT_END && !flight.sent) {
         flight.sent = true;
         onPick(flight.station);
       }
       return;
     }
-    rig.apply(dt, 0, reduced);
-    if (!reduced) dust.rotation.y = Math.sin(time * 0.09) * 0.14;
-    renderer.render(scene, camera);
+    rig.apply(dt, 1, reduced);
+    updateEquipment(dt);
+    render(scene, camera, dt);
     if (mouse && !drag) {
       hover = hitAt(mouse.x, mouse.y);
       canvas.style.cursor = hover ? 'pointer' : 'grab';
@@ -185,6 +245,14 @@ export function createLobby({
     last = now;
     time += dt;
     if (!ready) introTime += dt;
+    if (high && dt > 0 && sampledSeconds < 2) {
+      sampledSeconds += dt;
+      sampledFrames++;
+      if (sampledSeconds >= 2 && sampledSeconds / sampledFrames > 0.028) {
+        autoLow = true;
+        resizeRenderer();
+      }
+    }
     draw(dt);
     raf = requestAnimationFrame(tick);
   }
@@ -199,12 +267,13 @@ export function createLobby({
   }
 
   function resize(w, h) {
-    width = Math.max(1, w);
-    height = Math.max(1, h);
-    renderer.setPixelRatio(width < 860 ? 1 : Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(width, height, false);
+    w = Math.max(1, w);
+    h = Math.max(1, h);
+    if (w === width && h === height) return;
+    width = w;
+    height = h;
+    resizeRenderer();
     rig.resize(width / height);
-    if (!ready) target.setSize(Math.ceil(width), Math.ceil(height));
     if (!document.hidden) draw(0);
   }
 
@@ -262,6 +331,7 @@ export function createLobby({
       rig.release();
       leave();
       stop();
+      disposeBloom();
     } else start();
   }
 
@@ -279,25 +349,24 @@ export function createLobby({
 
   function free(...worlds) {
     const resources = new Set();
-    const collect = obj => {
-      if (obj.isInstancedMesh) resources.add(obj);
-      if (obj.geometry) resources.add(obj.geometry);
-      if (!obj.material) return;
-      resources.add(obj.material);
-      for (const value of Object.values(obj.material)) if (value?.isTexture && value !== target?.texture) resources.add(value);
-    };
     for (const world of worlds) {
-      world.traverse(collect);
+      world.traverse(obj => {
+        if (obj.geometry) resources.add(obj.geometry);
+        if (obj.shadow) resources.add(obj.shadow);
+        if (obj.material) {
+          for (const material of [obj.material].flat()) resources.add(material);
+        }
+      });
       world.clear();
     }
-    for (const res of resources) res.dispose();
+    for (const resource of resources) resource.dispose();
   }
 
   function freeIntro() {
-    free(intro, blend);
-    target?.dispose();
-    target = null;
-    animateCapsule = null;
+    if (!capsule) return;
+    free(intro, overlay);
+    capsule = flash = null;
+    intro.environment = null;
   }
 
   function dispose() {
@@ -306,10 +375,14 @@ export function createLobby({
     stop();
     for (const [name, fn] of Object.entries(events)) canvas.removeEventListener(name, fn);
     document.removeEventListener('visibilitychange', visibility);
+    for (const station of stations) station.dispose();
+    disposeBloom();
     free(scene);
     freeIntro();
+    textures.dispose();
+    environment?.dispose();
     renderer.dispose();
-    renderer.forceContextLoss();
+    if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
   }
 
   return { start, stop, resize, skip, highlight, pickById, reset, dispose };
