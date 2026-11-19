@@ -171,3 +171,7 @@
 ## [2026-11-19 18:45] Capsule gym entry points
 - **Goal**: Add the lobby route and preserve a direct training entry for exhibitions.
 - **Changes**: Lazy training route, guarded action query, return link, four-station HUD, visit store and action registry test.
+
+## [2026-11-19 18:48] Interactive procedural gym room
+- **Goal**: Add an asset-free Three.js lobby with accessible station picking.
+- **Changes**: Room geometry, equipment and rings, camera rig, pointer and keyboard interaction, projected HUD labels, WebGL lifecycle and fallback.
