@@ -34,3 +34,21 @@
 .lobby-label>div{display:grid;gap:2px;width:max-content;max-width:155px;padding:8px 12px;color:var(--ink);background:var(--ivory);transform:translate(-50%,-100%)}
 .lobby-label span{font-size:11px}
 .lobby-stations button.is-active{background:var(--acc)}
+.lobby-footer{opacity:var(--reveal,0)}
+.lobby-footer.is-ready{opacity:1}
+.lobby-footer:not(.is-ready) button{pointer-events:none}
+.lobby-skip{position:absolute;right:var(--edge);bottom:max(var(--edge),env(safe-area-inset-bottom));min-height:44px;padding-inline:20px;color:var(--ink);background:var(--ivory);z-index:1}
+.lobby-skip:focus-visible{outline-color:var(--ivory)}
+.lobby-capsule i{animation:lobby-open-top 4.3s both}
+.lobby-capsule i+i{animation-name:lobby-open-bottom}
+@keyframes lobby-open-top{
+  0%,25%{transform:none}
+  58%,100%{transform:translateY(-27%) rotate(-13deg)}
+}
+@keyframes lobby-open-bottom{
+  0%,25%{transform:none}
+  58%,100%{transform:translateY(15%)}
+}
+@media (prefers-reduced-motion:reduce){.lobby-capsule i{animation-duration:.001s}}
+.lobby-shade{position:absolute;inset:0;background:var(--bg);opacity:0;pointer-events:none}
+.lobby-shade.is-busy{pointer-events:auto}

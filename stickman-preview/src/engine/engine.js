@@ -101,6 +101,9 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
       }
     }
   }
+  function resetCameraCounting() {
+    FIT.stop(); S.fitAct = null; S.fitEnd = null; S.RP.act = null; S.RP.q = 0;
+  }
   /** 'demo' or 'cam'; logs the current action and starts counting afresh */
   function setSource(m) {
     const c = m === 'cam';
@@ -108,7 +111,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     logSet();
     S.camOn = c;
     S.count = 0; S.phase = null; S.lastLow = null; S.lastN = 0; S.repT.length = 0; S.blendFrom = null; S.blendT = 1;
-    FIT.stop(); S.fitAct = null; S.fitEnd = null; S.RP.act = null; S.RP.q = 0;
+    resetCameraCounting();
     if (c) camera.start(); else { camera.stop(); S.camLive = false; }
     if (ACT[S.action].rep.type === 'none') S.stateZh = ACT[S.action].rep.label;
   }
@@ -270,8 +273,18 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     S, attach, detach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel, setFitLenient,
     /** console tuning shortcut: prediction lead in ms */
     setCamLead(ms) { setCamTune({ lead: Number(ms) }); },
-    /** the camera preview's video element and 2D check canvas */
-    attachCamera(video, canvas) { camera.attach(video, canvas); },
+    /** Reconnect a selected camera source to the current training preview. */
+    attachCamera(video, canvas) {
+      camera.attach(video, canvas);
+      if (S.camOn) camera.start();
+    },
+    /** Release a hidden camera preview and preserve the user's selected source. */
+    detachCamera() {
+      camera.stop();
+      camera.attach(null, null);
+      resetCameraCounting();
+      S.camLive = false; S.handG = '';
+    },
     setPlaying(v) { S.playing = !!v; },
     setSpeed(v) { S.speed = v; },
     /** look: 'particle' | 'solid' | 'moire'; without a stage (between pages) it is kept for the next one */

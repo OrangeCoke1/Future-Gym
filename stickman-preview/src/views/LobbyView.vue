@@ -12,25 +12,59 @@ const visit = useLobby();
 const canvas = ref(null);
 const hud = ref(null);
 const fallback = ref(false);
+const ready = ref(false);
 const active = ref(null);
-let lobby, observer;
+const busy = ref(false);
+const navigationFailed = ref(false);
+const shade = ref(null);
+let lobby, observer, mounted = false;
+
+function finishIntro() {
+  visit.introSeen = true;
+  ready.value = true;
+}
+
+function fade(opacity) {
+  shade.value.style.opacity = opacity;
+}
 
 function unavailable() {
+  if (lobby) finishIntro();
+  busy.value = false;
+  fade(0);
   lobby = null;
   active.value = null;
   fallback.value = true;
 }
 
+function skip() {
+  if (ready.value) return;
+  if (lobby) lobby.skip();
+  else finishIntro();
+}
+
+function skipOnKey(event) {
+  if (ready.value || event.isComposing) return;
+  if (event.key === 'Escape' || event.code === 'Space') event.preventDefault();
+  skip();
+}
 
 onMounted(() => {
+  mounted = true;
   engine.stop();
-  visit.introSeen = true;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || visit.introSeen) finishIntro();
   lobby = createLobby({
     canvas: canvas.value,
-    reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    reduced,
+    skipIntro: ready.value,
+    onReady: finishIntro,
+    onReveal: opacity => hud.value?.reveal(opacity),
     onHover: id => { active.value = id; },
     onLabels: labels => hud.value?.positionLabels(labels),
     onPick: enter,
+    onDepart: () => { busy.value = true; active.value = null; },
+    onFade: fade,
     onUnavailable: unavailable,
   });
   if (!lobby) unavailable();
@@ -41,26 +75,45 @@ onMounted(() => {
     fit();
     lobby.start();
   }
+  window.addEventListener('keydown', skipOnKey);
   import('./TrainingView.vue').catch(() => {}); // Router retries the load on navigation.
 });
+
 onBeforeUnmount(() => {
+  mounted = false;
+  window.removeEventListener('keydown', skipOnKey);
   observer?.disconnect();
   lobby?.dispose();
   engine.start();
 });
 
 function pick(station) {
+  if (!ready.value || busy.value) return;
   if (lobby) lobby.pickById(station.id);
   else enter(station);
 }
 
-function enter(station) {
-  return router.push({ name: 'training', query: { act: station.act } });
+async function enter(station) {
+  busy.value = true;
+  navigationFailed.value = false;
+  try {
+    await router.push({ name: 'training', query: { act: station.act } });
+  } catch {
+    navigationFailed.value = true;
+  } finally {
+    if (mounted && router.currentRoute.value.name === 'lobby') {
+      lobby?.reset();
+      busy.value = false;
+    }
+  }
 }
 </script>
 
 <template>
-  <main class="lobby">
+  <main
+    class="lobby"
+    @click.capture="skip"
+  >
     <canvas
       ref="canvas"
       class="lobby-world"
@@ -70,9 +123,19 @@ function enter(station) {
     <LobbyHud
       ref="hud"
       :fallback="fallback"
+      :ready="ready"
+      :busy="busy"
+      :navigation-failed="navigationFailed"
       :active="active"
+      @skip="skip"
       @pick="pick"
       @highlight="lobby?.highlight($event)"
+    />
+    <div
+      ref="shade"
+      class="lobby-shade"
+      :class="{ 'is-busy': busy }"
+      aria-hidden="true"
     />
   </main>
 </template>
