@@ -3,6 +3,17 @@
 // t('深蹲') → '深蹲' / 'スクワット' / 'Squat'. Placeholders {0}, {1} are filled in order. Missing entries fall back to Chinese.
 /** @type {Record<string, [string, string]>} */
 export const I18N = {
+  '健身舱': ['トレーニングカプセル', 'Capsule gym'],
+  '跳过': ['スキップ', 'Skip'],
+  '拖动查看 · 点击器械开始训练': ['ドラッグで見回す · 器具をクリックして開始', 'Drag to look around · click a station to start'],
+  '选择器械开始训练': ['器具を選んでトレーニングを開始', 'Choose a station to start'],
+  '有氧跑台': ['有酸素トレッドミル', 'Cardio deck'],
+  '深蹲架': ['スクワットラック', 'Squat rack'],
+  '哑铃区': ['ダンベルエリア', 'Dumbbell zone'],
+  '体能垫': ['コンディショニングマット', 'Conditioning mat'],
+  '← 健身舱': ['← カプセル', '← Capsule'],
+  '进入训练': ['トレーニングへ', 'Start training'],
+  '语言': ['言語', 'Language'],
   '未来健身 2126 · 动作识别原型': ['未来のフィットネス 2126 · 動作認識プロトタイプ', 'Future Fitness 2126 · Motion prototype'],
   '未来健身 2126': ['未来のフィットネス 2126', 'Future Fitness 2126'],
   '演示': ['デモ', 'Demo'], '摄像头': ['カメラ', 'Camera'], '镜像': ['ミラー', 'Mirror'], '面板': ['パネル', 'Panel'], '关闭': ['閉じる', 'Close'],

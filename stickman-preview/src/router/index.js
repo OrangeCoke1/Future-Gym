@@ -1,15 +1,16 @@
-// Routes. Hash history (#/…) because the static servers (serve.ps1) have no fallback to index.html, so a path URL
-// would 404 on reload. Pages are children of AppLayout (the shared shell); add new ones lazily,
-// e.g. { path: 'history', name: 'history', component: () => import('../views/HistoryView.vue') }.
-// The default page stays a static import so the first screen needs no extra request.
+// Hash history keeps static-server deep links working. The lobby is standalone and training loads on demand.
 import { createRouter, createWebHashHistory } from 'vue-router';
-import AppLayout from '../layouts/AppLayout.vue';
-import TrainingView from '../views/TrainingView.vue';
+import LobbyView from '../views/LobbyView.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', component: AppLayout, children: [{ path: '', name: 'training', component: TrainingView }] },
+    { path: '/', name: 'lobby', component: LobbyView },
+    {
+      path: '/training',
+      component: () => import('../layouts/AppLayout.vue'),
+      children: [{ path: '', name: 'training', component: () => import('../views/TrainingView.vue') }],
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });
