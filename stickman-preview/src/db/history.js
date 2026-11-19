@@ -33,6 +33,9 @@ export async function listWorkouts(db, userId, limit = 20) {
   return workouts.map(w => ({ ...w, sets: sets.filter(x => x.workoutId === w.id).sort((a, b) => a.t - b.t) }));
 }
 
+/** how many workouts the user has @returns {Promise<number>} */
+export const countWorkouts = (db, userId) => db.workouts.where('userId').equals(userId).count();
+
 /** the user's all-time count per exercise, in the order of first use @returns {Promise<{ action: string, name: string, unit: string, n: number }[]>} */
 export async function totalsByAction(db, userId) {
   const out = new Map();

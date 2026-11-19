@@ -4,7 +4,7 @@ import 'fake-indexeddb/auto';
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { openDb } from '../src/db/db.js';
 import { register, login, getUser, saveProfile } from '../src/db/users.js';
-import { createWorkout, addSet, listWorkouts, totalsByAction, setNote, deleteWorkout, clearHistory } from '../src/db/history.js';
+import { createWorkout, addSet, listWorkouts, countWorkouts, totalsByAction, setNote, deleteWorkout, clearHistory } from '../src/db/history.js';
 
 const P = { w: 65, age: 30, sex: 'm' };
 const set = (act, name, n, t, unit = '次') => ({ act, name, n, unit, src: '演示', t });
@@ -72,6 +72,7 @@ describe('history', () => {
     await addSet(db, 1, a, set('squat', '深蹲', 3, 3), 0);
     await addSet(db, 2, b, set('curl', '弯举', 4, 4), 0);
     expect((await listWorkouts(db, 1)).map(w => w.id)).toEqual([a]);
+    expect([await countWorkouts(db, 1), await countWorkouts(db, 2), await countWorkouts(db, 3)]).toEqual([1, 1, 0]);
     expect((await totalsByAction(db, 2)).map(x => x.action)).toEqual(['curl']);
     await expect(addSet(db, 1, b, set('squat', '深蹲', 1, 5), 0)).rejects.toThrow();     // user 1 cannot add to user 2's workout
     expect(await setNote(db, 1, b, 'x')).toBe(0);

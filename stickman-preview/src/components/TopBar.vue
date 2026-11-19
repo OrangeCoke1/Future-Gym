@@ -1,5 +1,5 @@
 <script setup>
-// Top bar: brand, data source (demo / camera), language, local clock, account (log in / out), panel button.
+// Top bar: brand, data source (demo / camera), language, local clock, account (log in, or the user menu), panel button.
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '../i18n/useI18n.js';
 import { LANGS } from '../i18n/messages.js';
@@ -7,6 +7,7 @@ import { useEngine } from '../composables/useEngine.js';
 import { useSettings } from '../stores/settings.js';
 import { useAuth } from '../stores/auth.js';
 import AuthDialog from './AuthDialog.vue';
+import UserMenu from './UserMenu.vue';
 
 defineProps({ drawerOpen: { type: Boolean, required: true } });
 const emit = defineEmits({ toggleDrawer: null });
@@ -102,16 +103,7 @@ defineExpose({ focus: () => drawerBtn.value && drawerBtn.value.focus() });
         :aria-label="t('本机时间')"
       >{{ clock }}</span>
       <template v-if="auth.ready">
-        <span
-          v-if="auth.user"
-          class="who"
-        >{{ auth.user.username }}<button
-          class="btn"
-          type="button"
-          @click="auth.logout()"
-        >
-          {{ t('退出') }}
-        </button></span>
+        <UserMenu v-if="auth.user" />
         <button
           v-else
           class="btn"

@@ -7,11 +7,13 @@ import DisplayOptions from './DisplayOptions.vue';
 import CameraTuning from './CameraTuning.vue';
 import ProfileForm from './ProfileForm.vue';
 import SessionLog from './SessionLog.vue';
-import HistoryLog from './HistoryLog.vue';
+import UserProfileHint from './UserProfileHint.vue';
+import { useAuth } from '../../stores/auth.js';
 import DataNotes from './DataNotes.vue';
 
 const open = defineModel('open', { type: Boolean, required: true });
 const { t } = useI18n();
+const auth = useAuth();
 const closeBtn = ref(null);
 watch(open, v => { if (v) nextTick(() => closeBtn.value && closeBtn.value.focus()); });
 const onKey = e => { if (e.key === 'Escape' && open.value) open.value = false; };
@@ -46,9 +48,9 @@ onBeforeUnmount(() => removeEventListener('keydown', onKey));
     <div class="dr-b">
       <DisplayOptions />
       <CameraTuning />
-      <ProfileForm />
+      <ProfileForm v-if="!auth.user" />
+      <UserProfileHint v-else />
       <SessionLog />
-      <HistoryLog />
       <DataNotes />
     </div>
   </aside>

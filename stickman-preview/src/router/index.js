@@ -9,7 +9,10 @@ import TrainingView from '../views/TrainingView.vue';
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', component: AppLayout, children: [{ path: '', name: 'training', component: TrainingView }] },
+    { path: '/', component: AppLayout, children: [
+      { path: '', name: 'training', component: TrainingView },
+      { path: 'me', name: 'me', component: () => import('../views/MeView.vue') }   // 我的页面: the user's records and profile
+    ] },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 });

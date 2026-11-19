@@ -40,7 +40,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     // camera view: 'live' = the figure follows the person's landmarks; 'replay' = the figure plays the recognised exercise
     // as an animation, one full rep for every rep the person completes (jog: half a stride per step)
     camView, mirror: true, camStat: null, camAspect: null,  // camStat = [Chinese text, ...args] or null; camAspect = preview aspect, null = hidden
-    RP: { act: null, t: 0, q: 0 }, fitAct: null, fitEnd: null,
+    RP: { act: null, t: 0, q: 0 }, fitAct: null, fitEnd: null, fitBase: 0,   // fitBase = reps of the current FIT action already saved (保存本组)
     // sync = the action whose scripted rep the replay view is phase-locking to the person's live angle, or null
     sync: null, syncT: 0,
     handG: '',                                          // recognised hand gestures for the camera window: 'L:握拳|R:比 V' (figure side : Chinese label)
@@ -72,6 +72,14 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     S.sets.push(e);
     for (const f of setSubs) f(e, S.M.kcal);
   }
+  /** 保存本组: log the current count now and count afresh, staying on the same action. In camera mode the
+   *  recognition keeps its own running count, so the saved part becomes the offset its later events are read from */
+  function saveSet() {
+    if (!S.count || ACT[S.action].rep.type === 'none') return;
+    logSet();
+    if (S.fitAct === S.action) S.fitBase += S.count;
+    S.count = 0; S.repT.length = 0;                    // phase / lastN / lastLow stay: they track the motion, not the total
+  }
   function setAction(k) {
     if (k === S.action || !ACT[k]) return;
     logSet();
@@ -91,11 +99,11 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
       const k = fitKeyOf(e);
       if (e.type === 'action_start') {
         if (S.action !== k) setAction(k);
-        S.fitAct = k; S.fitEnd = null; S.count = 0;
+        S.fitAct = k; S.fitEnd = null; S.fitBase = 0; S.count = 0;
         for (let i = 0; i < e.count; i++) bump(S, now);
         replayAdd(k, k === 'jog' ? Math.min(e.count, 2) : 1);
       } else if (e.type === 'rep' && S.fitAct === k) {
-        const n = e.count - S.count; for (let i = 0; i < n; i++) bump(S, now);
+        const n = e.count - S.fitBase - S.count; for (let i = 0; i < n; i++) bump(S, now);
         replayAdd(k, n);
       } else if (e.type === 'action_end' && S.fitAct === k) {
         S.fitAct = null; S.fitEnd = { k, total: e.totalReps };
@@ -269,7 +277,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   }
 
   return {
-    S, attach, detach, resize, setAction, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel, setFitLenient,
+    S, attach, detach, resize, setAction, saveSet, setView, dragBy, setSource, setCamView, setMirror, setCamTune, setHands, setPoseModel, setFitLenient,
     /** console tuning shortcut: prediction lead in ms */
     setCamLead(ms) { setCamTune({ lead: Number(ms) }); },
     /** the camera preview's video element and 2D check canvas */

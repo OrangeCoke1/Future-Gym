@@ -1,15 +1,12 @@
 <script setup>
-// Panel · training history of the logged-in user: every visit's sets, saved in this browser's IndexedDB
-// (stores/history.js), with an all-time total per exercise, a note per visit, and delete / clear. Deleting asks
-// for a second click. Logged out, nothing is saved and only a hint is shown.
+// 我的页面 · training history of the logged-in user: every visit's sets, saved in this browser's IndexedDB
+// (stores/history.js), a note per visit, and delete / clear. Deleting asks for a second click.
 import { ref } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useHistory } from '../../stores/history.js';
-import { useAuth } from '../../stores/auth.js';
 
 const { t } = useI18n();
 const h = useHistory();
-const auth = useAuth();
 const pad = n => String(n).padStart(2, '0');
 const hm = ts => { const d = new Date(ts); return d.getHours() + ':' + pad(d.getMinutes()); };
 const day = ts => { const d = new Date(ts); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm(ts); };
@@ -38,29 +35,11 @@ function confirmThen(key, f) {
       </button>
     </div>
     <p
-      v-if="!auth.user"
-      class="note"
-    >
-      {{ t('登录后可以保存训练记录。') }}
-    </p>
-    <p
-      v-else-if="!h.ok"
+      v-if="!h.ok"
       class="note"
     >
       {{ t('这个浏览器无法使用本地数据库，训练历史不会保存。') }}
     </p>
-    <ul
-      v-if="h.totals.length"
-      class="tot"
-      :aria-label="t('累计')"
-    >
-      <li
-        v-for="x in h.totals"
-        :key="x.action"
-      >
-        {{ t(x.name) }} <b>{{ x.n }}</b> {{ t(x.unit) }}
-      </li>
-    </ul>
     <ol
       v-if="h.workouts.length"
       class="hist"
@@ -98,10 +77,10 @@ function confirmThen(key, f) {
       </li>
     </ol>
     <p
-      v-else-if="auth.user"
+      v-else
       class="empty"
     >
-      {{ t('切换动作后，记录会保存在这台设备的浏览器里，刷新页面也不会丢失。') }}
+      {{ t('点训练画面上的「保存本组」，或切换动作时，记录会保存在这里。') }}
     </p>
   </section>
 </template>
