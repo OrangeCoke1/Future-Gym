@@ -1,4 +1,5 @@
 export const INTRO_END = 4.3;
+export const FLIGHT_END = 0.9;
 
 function progress(t, start, end) { return Math.min(1, Math.max(0, (t - start) / (end - start))); }
 
@@ -31,4 +32,8 @@ export function phaseAt(t) {
 
 export function lidAngleAt(t) {
   return -110 * Math.PI / 180 * easeOutBack(progress(t, 1.1, 2.3));
+}
+
+export function flightAt(t) {
+  return { position: easeInOutCubic(progress(t, 0, FLIGHT_END)), fade: progress(t, FLIGHT_END - 0.35, FLIGHT_END) };
 }

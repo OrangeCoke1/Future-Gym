@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { color } from './gymRoom.js';
 import { lidAngleAt } from './timeline.js';
 
 const RADIUS = 0.9;
@@ -33,7 +34,7 @@ export function buildCapsule(scene) {
   scene.add(pod);
   const shell = new THREE.LatheGeometry(shellProfile(), 64);
   const enamel = new THREE.MeshStandardMaterial({
-    color: '#F1F0E2', metalness: 0.2, roughness: 0.35, side: THREE.DoubleSide,
+    color: color('#F1F0E2'), metalness: 0.2, roughness: 0.35, side: THREE.DoubleSide,
   });
   const base = new THREE.Mesh(shell, enamel);
   base.rotation.x = Math.PI;
@@ -47,13 +48,13 @@ export function buildCapsule(scene) {
   lid.add(cap);
   const windowFrame = new THREE.Mesh(
     new THREE.TorusGeometry(0.29, 0.036, 8, 48),
-    new THREE.MeshStandardMaterial({ color: '#819695', metalness: 0.5, roughness: 0.33 }),
+    new THREE.MeshStandardMaterial({ color: color('#819695'), metalness: 0.5, roughness: 0.33 }),
   );
-  windowFrame.position.set(0, 0.72, 1.742);
+  windowFrame.position.set(0, 0.72, 1.815);
   lid.add(windowFrame);
   const windowPane = new THREE.Mesh(
     new THREE.SphereGeometry(0.286, 32, 16),
-    new THREE.MeshStandardMaterial({ color: '#152b35', emissive: '#284e60', emissiveIntensity: 0.25, roughness: 0.24 }),
+    new THREE.MeshStandardMaterial({ color: color('#152b35'), emissive: color('#284e60'), emissiveIntensity: 0.25, roughness: 0.24 }),
   );
   windowPane.position.copy(windowFrame.position);
   windowPane.scale.z = 0.31;
@@ -82,7 +83,7 @@ export function buildCapsule(scene) {
   lamp.position.y = 0.12;
   pod.add(lamp);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: glowMap(), color: '#dcf5ff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
+    map: glowMap(), color: color('#dcf5ff'), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false,
   }));
   halo.position.set(0, 0.12, 0.08);
   halo.scale.set(3.3, 3.3, 1);
@@ -100,7 +101,7 @@ export function buildCapsule(scene) {
   const points = new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('position', points);
   const burst = new THREE.Points(geometry, new THREE.PointsMaterial({
-    color: '#c9edff', size: 0.025, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    color: color('#c9edff'), size: 0.025, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
   }));
   burst.frustumCulled = false;
   pod.add(burst);

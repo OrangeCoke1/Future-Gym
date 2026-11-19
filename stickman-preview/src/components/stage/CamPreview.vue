@@ -2,7 +2,7 @@
 // Camera preview: the video with the detected landmarks drawn over it (mirrored with the figure), in a floating window
 // over the whole page (teleported to <body>, position: fixed) — drag the title bar to move it, any corner to resize it
 // (up to the whole browser window), double-click or the size button to step small → large → as large as fits. It first appears at the stage's bottom-right corner.
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useEngine } from '../../composables/useEngine.js';
 import { useSettings } from '../../stores/settings.js';
@@ -34,6 +34,7 @@ const gestures = computed(() => (live.handG || '').split('|').filter(Boolean).ma
 }).join(' · '));
 
 onMounted(() => engine.attachCamera(video.value, canvas.value));
+onBeforeUnmount(() => engine.detachCamera());
 // shown for the first time, aspect changed, or layout reset: place / re-clamp once laid out
 watch(() => [live.camAspect, rect.x < 0], () => nextTick(fw.clamp));
 </script>

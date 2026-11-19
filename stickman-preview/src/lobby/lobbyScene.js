@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { buildCapsule } from './capsule.js';
-import { INTRO_END, phaseAt, stationRevealAt } from './timeline.js';
+import { FLIGHT_END, INTRO_END, flightAt, phaseAt, stationRevealAt } from './timeline.js';
 import { createCamRig, frameCapsule } from './camRig.js';
-import { DARK, buildGymRoom, lightRoom } from './gymRoom.js';
+import { DARK, buildGymRoom, color, lightRoom } from './gymRoom.js';
 import { buildStation } from './stationMesh.js';
 import { STATIONS } from './stations.js';
 
@@ -12,10 +12,12 @@ import { STATIONS } from './stations.js';
  *   canvas: HTMLCanvasElement, reduced: boolean, skipIntro: boolean,
  *   onReady: () => void, onReveal: (opacity: number) => void, onHover: (id: string|null) => void,
  *   onPick: (station: import('./stations.js').Station) => void, onLabels: (labels: LabelPosition[]) => void,
- *   onUnavailable: () => void
+ *   onUnavailable: () => void, onDepart: () => void, onFade: (opacity: number) => void
  * }} options
  */
-export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onHover, onPick, onLabels, onUnavailable }) {
+export function createLobby({
+  canvas, reduced, skipIntro, onReady, onReveal, onHover, onPick, onLabels, onUnavailable, onDepart, onFade,
+}) {
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -37,7 +39,7 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
   const blend = new THREE.Scene();
   const introCamera = new THREE.PerspectiveCamera(36, 1, 0.045, 28);
   const screenCamera = new THREE.Camera();
-  const target = ready ? null : new THREE.WebGLRenderTarget(1, 1);
+  let target = ready ? null : new THREE.WebGLRenderTarget(1, 1);
   let animateCapsule;
   if (target) {
     intro.background = new THREE.Color(DARK);
@@ -48,8 +50,8 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
     })));
   }
 
-  const cold = new THREE.Color('#9ce4ed');
-  const hot = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#E0704A');
+  const cold = color('#9ce4ed');
+  const hot = color(getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#E0704A');
   const colliders = stations.map(s => s.collider);
   const labels = STATIONS.map(({ id }) => ({ id, x: 0, y: 0, visible: false }));
   const projected = new THREE.Vector3();
@@ -58,6 +60,7 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
   const hits = [];
   let width = 1, height = 1, raf = null, last = null, time = 0, disposed = false;
   let drag = null, active = null, focus = null, hover = null, mouse = null;
+  let flight = null;
 
   function updateHighlight() {
     const id = focus ?? hover;
@@ -78,8 +81,19 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
   }
 
   function pickById(id) {
+    if (!ready || flight) return;
     const station = STATIONS.find(s => s.id === id);
-    if (station && ready) onPick(station);
+    if (!station) return;
+    if (reduced) {
+      onPick(station);
+      return;
+    }
+    flight = { station, start: time, frame: rig.flightTo(station), sent: false };
+    drag = null;
+    rig.release();
+    leave();
+    highlight(null);
+    onDepart();
   }
 
   function hitAt(x, y) {
@@ -97,6 +111,7 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
     ready = true;
     introTime = INTRO_END;
     for (const s of stations) s.group.position.y = 0;
+    freeIntro();
     onReveal(1);
     onReady();
   }
@@ -135,7 +150,19 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
 
   function draw(dt) {
     if (!ready && drawIntro(dt)) return;
-    rig.apply(dt);
+    if (flight) {
+      const elapsed = time - flight.start;
+      const { position, fade } = flightAt(elapsed);
+      flight.frame(position);
+      onFade(fade);
+      renderer.render(scene, camera);
+      if (elapsed >= FLIGHT_END && !flight.sent) {
+        flight.sent = true;
+        onPick(flight.station);
+      }
+      return;
+    }
+    rig.apply(dt, 0, reduced);
     if (!reduced) dust.rotation.y = Math.sin(time * 0.09) * 0.14;
     renderer.render(scene, camera);
     if (mouse && !drag) {
@@ -187,14 +214,20 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
     if (!document.hidden) draw(0);
   }
 
+  function reset() {
+    flight = null;
+    onFade(0);
+  }
+
   function down(event) {
-    if (!ready || drag || event.button !== 0) return;
+    if (!ready || flight || drag || event.button !== 0) return;
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0, moved: false };
     canvas.setPointerCapture(event.pointerId);
     canvas.style.cursor = 'grabbing';
   }
 
   function move(event) {
+    if (!ready || flight) return;
     if (event.pointerType === 'mouse') mouse = { x: event.clientX, y: event.clientY };
     if (drag?.id !== event.pointerId) return;
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
@@ -204,7 +237,7 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
       updateHighlight();
     }
     drag.moved = true;
-    if (!reduced) rig.drag(dx - drag.dx, dy - drag.dy);
+    rig.drag(dx - drag.dx, dy - drag.dy);
     drag.dx = dx;
     drag.dy = dy;
   }
@@ -244,25 +277,40 @@ export function createLobby({ canvas, reduced, skipIntro, onReady, onReveal, onH
   for (const [name, fn] of Object.entries(events)) canvas.addEventListener(name, fn);
   document.addEventListener('visibilitychange', visibility);
 
+  function free(...worlds) {
+    const resources = new Set();
+    const collect = obj => {
+      if (obj.isInstancedMesh) resources.add(obj);
+      if (obj.geometry) resources.add(obj.geometry);
+      if (!obj.material) return;
+      resources.add(obj.material);
+      for (const value of Object.values(obj.material)) if (value?.isTexture && value !== target?.texture) resources.add(value);
+    };
+    for (const world of worlds) {
+      world.traverse(collect);
+      world.clear();
+    }
+    for (const res of resources) res.dispose();
+  }
+
+  function freeIntro() {
+    free(intro, blend);
+    target?.dispose();
+    target = null;
+    animateCapsule = null;
+  }
+
   function dispose() {
     if (disposed) return;
     disposed = true;
     stop();
     for (const [name, fn] of Object.entries(events)) canvas.removeEventListener(name, fn);
     document.removeEventListener('visibilitychange', visibility);
-    const resources = new Set();
-    const collect = obj => {
-      if (obj.geometry) resources.add(obj.geometry);
-      if (!obj.material) return;
-      resources.add(obj.material);
-      for (const value of Object.values(obj.material)) if (value?.isTexture && value !== target?.texture) resources.add(value);
-    };
-    for (const world of [scene, intro, blend]) world.traverse(collect);
-    target?.dispose();
-    for (const res of resources) res.dispose();
+    free(scene);
+    freeIntro();
     renderer.dispose();
     renderer.forceContextLoss();
   }
 
-  return { start, stop, resize, skip, highlight, pickById, dispose };
+  return { start, stop, resize, skip, highlight, pickById, reset, dispose };
 }

@@ -2,6 +2,9 @@ import * as THREE from 'three';
 
 export const DARK = '#0B0F12';
 
+// r149 defaults to legacy color input. Convert only the lobby's materials and keep the training shaders' settings.
+export const color = hex => new THREE.Color(hex).convertSRGBToLinear();
+
 function floorMark() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1024;
@@ -28,28 +31,29 @@ function floorMark() {
   ink.fillText('2126', 0, 52);
   const texture = new THREE.CanvasTexture(canvas);
   texture.encoding = THREE.sRGBEncoding;
+  texture.anisotropy = 8;
   return texture;
 }
 
 export function lightRoom(scene) {
-  const key = new THREE.DirectionalLight('#EAF6FF', 1.65);
+  const key = new THREE.DirectionalLight('#EAF6FF', 1.25);
   key.position.set(-3, 6, 4);
-  scene.add(new THREE.HemisphereLight('#EAF6FF', '#1D231E', 1.2), key);
+  scene.add(new THREE.HemisphereLight('#EAF6FF', '#1D231E', 0.85), key);
 }
 
 export function buildGymRoom(scene) {
   scene.background = new THREE.Color(DARK);
-  scene.fog = new THREE.Fog(DARK, 8, 22);
+  scene.fog = new THREE.Fog(color(DARK), 8, 22);
   lightRoom(scene);
 
   const hull = new THREE.Mesh(
     new THREE.CapsuleGeometry(6, 14, 24, 64),
-    new THREE.MeshStandardMaterial({ color: '#10151A', side: THREE.BackSide }),
+    new THREE.MeshStandardMaterial({ color: color('#10151A'), side: THREE.BackSide }),
   );
   hull.rotation.x = Math.PI / 2;
   scene.add(hull);
 
-  const deck = new THREE.Mesh(new THREE.PlaneGeometry(12, 26), new THREE.MeshStandardMaterial({ color: '#19252a' }));
+  const deck = new THREE.Mesh(new THREE.PlaneGeometry(12, 26), new THREE.MeshStandardMaterial({ color: color('#304249') }));
   deck.rotation.x = -Math.PI / 2;
   deck.position.y = -0.025;
   scene.add(deck);
@@ -60,13 +64,13 @@ export function buildGymRoom(scene) {
   mark.rotation.x = -Math.PI / 2;
   scene.add(mark);
 
-  const ribMaterial = new THREE.MeshStandardMaterial({ color: '#293b43', metalness: 0.45, roughness: 0.55 });
+  const ribMaterial = new THREE.MeshStandardMaterial({ color: color('#526a74'), metalness: 0.45, roughness: 0.55 });
   const ribs = new THREE.InstancedMesh(new THREE.TorusGeometry(5.91, 0.063, 6, 64, Math.PI), ribMaterial, 24);
   const matrix = new THREE.Matrix4();
   for (let i = 0; i < ribs.count; i++) ribs.setMatrixAt(i, matrix.makeTranslation(0, 0, -7 + 14 * i / 23));
   scene.add(ribs);
 
-  const glow = new THREE.MeshBasicMaterial({ color: '#8dd1dc' });
+  const glow = new THREE.MeshBasicMaterial({ color: color('#8dd1dc') });
   const portal = new THREE.Mesh(new THREE.TorusGeometry(2.45, 0.035, 6, 64, Math.PI), glow);
   portal.position.set(0, 0, -10.9);
   scene.add(portal);
@@ -84,7 +88,7 @@ export function buildGymRoom(scene) {
 
   const positions = new Float32Array(800 * 3);
   const colors = new Float32Array(positions.length);
-  const pale = new THREE.Color('#EAF6FF'), blue = new THREE.Color('#2563D0');
+  const pale = color('#EAF6FF'), blue = color('#2563D0');
   for (let i = 0; i < positions.length; i += 3) {
     positions[i] = (Math.random() - 0.5) * 10;
     positions[i + 1] = Math.random() * 5;
@@ -95,7 +99,7 @@ export function buildGymRoom(scene) {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   const dust = new THREE.Points(geometry, new THREE.PointsMaterial({
-    vertexColors: true, size: 0.026, transparent: true, opacity: 0.62,
+    vertexColors: true, size: 0.020, transparent: true, opacity: 0.53,
     blending: THREE.AdditiveBlending, depthWrite: false,
   }));
   scene.add(dust);

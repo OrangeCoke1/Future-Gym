@@ -50,3 +50,5 @@
   58%,100%{transform:translateY(15%)}
 }
 @media (prefers-reduced-motion:reduce){.lobby-capsule i{animation-duration:.001s}}
+.lobby-shade{position:absolute;inset:0;background:var(--bg);opacity:0;pointer-events:none}
+.lobby-shade.is-busy{pointer-events:auto}
