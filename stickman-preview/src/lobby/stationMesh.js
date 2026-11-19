@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { BAYS } from './layout.js';
-import { LILAC, VIOLET, color, lightMaterial } from './materials.js';
+import { ACCENT, GLOW, color, lightMaterial } from './materials.js';
 import { buildDumbbells } from './props/dumbbells.js';
 import { createPropBatch } from './props/geometry.js';
 import { buildMatZone } from './props/matZone.js';
 import { buildSquatRack } from './props/squatRack.js';
 import { buildTreadmill } from './props/treadmill.js';
 
-const lilac = color(LILAC), violet = color(VIOLET);
+const ivory = color(GLOW), terracotta = color(ACCENT);
 const builders = { cardio: buildTreadmill, squat: buildSquatRack, dumbbell: buildDumbbells, mat: buildMatZone };
 
 export function buildStation(station, { detailed, materials, shadow, textures }) {
@@ -20,7 +20,7 @@ export function buildStation(station, { detailed, materials, shadow, textures })
   group.scale.setScalar(bay.scale ?? 1);
 
   const batch = createPropBatch(group, detailed);
-  const signal = lightMaterial(LILAC, 1.6);
+  const signal = lightMaterial(GLOW, 1.45);
   const props = builders[station.id]({ batch, materials, textures, signal, detailed });
   batch.finish();
 
@@ -42,7 +42,7 @@ export function buildStation(station, { detailed, materials, shadow, textures })
       const goal = Number(hovered);
       level = reduced ? goal : level + THREE.MathUtils.clamp(goal - level, -dt / 0.25, dt / 0.25);
       const eased = level * level * (3 - 2 * level);
-      signal.color.copy(lilac).lerp(violet, eased).multiplyScalar(0.55 + reveal + eased * 2.7 + focus);
+      signal.color.copy(ivory).lerp(terracotta, eased).multiplyScalar(0.48 + reveal + eased * 2.45 + focus);
       if (!reduced) props?.update(dt);
     },
   };

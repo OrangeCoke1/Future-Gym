@@ -1,6 +1,11 @@
-export function buildMatZone({ batch, materials, signal }) {
-  const { box, tube } = batch;
+import { roundedBorder } from './geometry.js';
+
+export function buildMatZone({ batch, materials, signal, detailed }) {
+  const { add, box, tube } = batch;
+  box(materials.rubber, [1.681, 0.017, 2.052], [0, 0.009, 0], 0.008);
   box(materials.mat, [1.67, 0.044, 2.04], [0, 0.025, 0], 0.021);
+  add(roundedBorder(1.591, 1.960, 0.054, 0.007, detailed), materials.rubber,
+    [0, 0.0474, 0], [-Math.PI / 2, 0, 0]);
   const y = 0.049;
   for (const x of [-1, 1]) {
     for (const z of [-1, 1]) {

@@ -191,3 +191,7 @@
 ## [2026-11-19 20:35] Lilac fitness cabin
 - **Goal**: Match the reference layout in the interactive 3D lobby.
 - **Changes**: Rebuild the rounded room, city window, ring lighting, wall fixtures and four equipment models in lilac. Connect the wall plaques to the station picker and update camera framing, HUD, tests and the README.
+
+## [2026-11-19 21:12] Fitness cabin finish
+- **Goal**: Refine the approved 3D cabin using the training page palette.
+- **Changes**: Use sage, ivory, dark green and terracotta in the lobby. Refine the lamp channels, window trim, instrument glass, equipment fittings and HUD controls.

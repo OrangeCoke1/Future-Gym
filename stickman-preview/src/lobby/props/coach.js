@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { parseGlb } from '../../render/glb.js';
-import { LILAC, color } from '../materials.js';
+import { GLOW, color } from '../materials.js';
 import { lobbyRandom } from '../textures.js';
 
 function sampleCoach(positions) {
@@ -47,7 +47,7 @@ export function createCoach(panel, outline) {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(points, 3));
         coach = new THREE.Points(geometry, new THREE.PointsMaterial({
-          color: color(LILAC).multiplyScalar(1.44), size: 0.0085, opacity: 0.62,
+          color: color(GLOW).multiplyScalar(1.44), size: 0.0085, opacity: 0.62,
           transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
         }));
         coach.position.set(outline.position.x, -0.466, outline.position.z + 0.021);
