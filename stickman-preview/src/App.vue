@@ -6,6 +6,7 @@ import { provideEngine } from './composables/useEngine.js';
 import { useDocumentLang } from './i18n/useI18n.js';
 import { useSettings } from './stores/settings.js';
 import { useProfile } from './stores/profile.js';
+import { useHistory } from './stores/history.js';
 
 const settings = useSettings();
 const { engine } = provideEngine({ profile: useProfile().profile, opts: settings.opts, camView: settings.camView });
@@ -20,6 +21,9 @@ watch(() => settings.fitLenient, v => engine.setFitLenient(v), now);
 watch(() => settings.body, v => engine.setBody(v), now);
 watch(() => settings.camView, v => engine.setCamView(v));        // createEngine already starts with it
 watch(() => settings.color, v => engine.setColor(v));            // not persisted; the stage starts in the default colour
+// every logged set also goes to the training history (IndexedDB, 面板 → 训练历史)
+const history = useHistory();
+engine.onSet((e, kcal) => history.record(e, kcal));
 // entry point for a real heart-rate source (e.g. a Bluetooth strap): stickman.setHeartRate(bpm) on every reading;
 // stickman.setCamLead(ms) tries a prediction lead without saving it (0 = off, the panel's slider saves)
 window.stickman = { setHeartRate: bpm => engine.setHeartRate(bpm), setCamLead: ms => engine.setCamLead(ms) };

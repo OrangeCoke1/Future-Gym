@@ -20,7 +20,7 @@ import { phaseTable, phaseAt, bothSides } from './phaseSync.js';
 import { createCamera } from './camera.js';
 
 /** @typedef {{ muscle: boolean, oxy: boolean, shade: boolean, line: boolean, angle: boolean, dots: boolean, orbit: boolean }} DisplayOpts */
-/** @typedef {{ name: string, n: number, unit: string, t: number, src: string }} SetEntry  one logged action (Chinese source text) */
+/** @typedef {{ act: string, name: string, n: number, unit: string, t: number, src: string }} SetEntry  one logged action: ACT key + Chinese source text */
 
 const UI_DT = 0.25;                                     // live read-outs (angles, percentages, vitals) refresh at most 4× a second
 const flip = k => k.slice(0, -1) + (k.endsWith('L') ? 'R' : 'L');
@@ -50,7 +50,7 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     balance: null, balL: 50,
     stage: null, mode: 'particle', dark: true
   };
-  const frameSubs = new Set(), tickSubs = new Set();
+  const frameSubs = new Set(), tickSubs = new Set(), setSubs = new Set();
   let overlay = null, raf = 0, last = 0;
   const FIT = createFit();
   const camera = createCamera({
@@ -68,7 +68,9 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
   function logSet() {
     const A = ACT[S.action];
     if (!S.count || A.rep.type === 'none') return;
-    S.sets.push({ name: A.name, n: S.count, unit: A.rep.type === 'steps' ? '步' : '次', t: Date.now(), src: S.camOn ? '摄像头' : '演示' });
+    const e = { act: S.action, name: A.name, n: S.count, unit: A.rep.type === 'steps' ? '步' : '次', t: Date.now(), src: S.camOn ? '摄像头' : '演示' };
+    S.sets.push(e);
+    for (const f of setSubs) f(e, S.M.kcal);
   }
   function setAction(k) {
     if (k === S.action || !ACT[k]) return;
@@ -285,6 +287,8 @@ export function createEngine({ profile, opts, playing = true, camView = 'live' }
     clearSets() { S.sets.length = 0; },
     /** per-frame subscriber (S, dt); returns an unsubscribe function */
     onFrame(f) { frameSubs.add(f); return () => frameSubs.delete(f); },
+    /** subscriber called for every logged set (entry, kcal so far this visit); returns an unsubscribe function */
+    onSet(f) { setSubs.add(f); return () => setSubs.delete(f); },
     /** subscriber called at most 4× a second (S) */
     onTick(f) { tickSubs.add(f); return () => tickSubs.delete(f); },
     start() { if (!raf) { last = 0; raf = requestAnimationFrame(frame); } },

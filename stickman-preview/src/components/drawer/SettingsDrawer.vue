@@ -7,6 +7,7 @@ import DisplayOptions from './DisplayOptions.vue';
 import CameraTuning from './CameraTuning.vue';
 import ProfileForm from './ProfileForm.vue';
 import SessionLog from './SessionLog.vue';
+import HistoryLog from './HistoryLog.vue';
 import DataNotes from './DataNotes.vue';
 
 const open = defineModel('open', { type: Boolean, required: true });
@@ -47,6 +48,7 @@ onBeforeUnmount(() => removeEventListener('keydown', onKey));
       <CameraTuning />
       <ProfileForm />
       <SessionLog />
+      <HistoryLog />
       <DataNotes />
     </div>
   </aside>

@@ -36,3 +36,13 @@ canvas.chart{width:100%;display:block}
 .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .chip{font-size:13px;padding:5px 14px;cursor:pointer}
 .chip[aria-pressed="true"]{color:var(--ivory);font-weight:500;background:var(--ink);border-color:var(--ink)}
+/* top bar · account and the log-in dialog */
+.who{display:inline-flex;align-items:center;gap:8px;font-size:12px}
+.auth{width:min(320px,92vw);padding:22px;border:1px solid var(--line2);border-radius:14px;background:var(--paper);color:var(--ink)}
+.auth::backdrop{background:rgba(29,35,30,.38)}
+.auth form{display:flex;flex-direction:column;gap:12px}
+.auth label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.auth input{padding:6px 12px;border:1px solid var(--line2);border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:13px}
+.auth .err{margin:0;min-height:1.2em;font-size:12px;color:#B8442A}
+.auth .note{margin:0;font-size:11px;color:var(--muted)}
+.auth .row{justify-content:flex-end}
