@@ -1,10 +1,8 @@
 import * as THREE from 'three';
 
 export const INK = '#2A2F2B';
-export const WALL = '#E9DFEE';
-export const DECK = '#CBBFD9';
-export const LILAC = '#F4D9FF';
-export const VIOLET = '#BE86FA';
+export const WALL = '#BEC3AD';
+export const DECK = '#A5AC98';
 export const GLOW = '#FFF4E2';
 export const ACCENT = '#E0704A';
 
@@ -31,15 +29,16 @@ export function lightMaterial(hex = GLOW, strength = 2.5, options = {}) {
 }
 
 export function createEquipmentMaterials(textures) {
+  const grain = textures.grain();
   return {
-    housing: surface('#ECE2EC', { roughness: 0.31, metalness: 0.06, envMapIntensity: 0.69 }),
-    graphite: surface('#40394F', { roughness: 0.42, metalness: 0.44, envMapIntensity: 0.72 }),
-    aluminum: surface('#BEBBCB', { roughness: 0.29, metalness: 0.78, envMapIntensity: 0.79 }),
-    chrome: surface('#E2E0ED', { roughness: 0.17, metalness: 1, envMapIntensity: 0.92 }),
-    grip: surface('#C8C2D0', { roughness: 0.29, metalness: 0.71, envMapIntensity: 0.88, roughnessMap: textures.knurl() }),
-    rubber: surface('#322C40', { roughness: 0.88, envMapIntensity: 0.31 }),
-    padding: surface('#776B91', { roughness: 0.69, bumpMap: textures.grain(), bumpScale: 0.0009, envMapIntensity: 0.45 }),
-    mat: surface('#917EAA', { roughness: 0.85, bumpMap: textures.grain(), bumpScale: 0.0015, envMapIntensity: 0.49 }),
-    roller: surface('#B38AD5', { roughness: 0.74, bumpMap: textures.roller(), bumpScale: 0.004, envMapIntensity: 0.54 }),
+    housing: surface('#E9E8D8', { roughness: 0.34, metalness: 0.09, bumpMap: grain, bumpScale: 0.0004, envMapIntensity: 0.69 }),
+    graphite: surface('#2E3731', { roughness: 0.48, metalness: 0.37, envMapIntensity: 0.63 }),
+    aluminum: surface('#ADB3AC', { roughness: 0.32, metalness: 0.74, envMapIntensity: 0.79 }),
+    chrome: surface('#DEE3DF', { roughness: 0.19, metalness: 1, envMapIntensity: 0.92 }),
+    grip: surface('#A7ADA6', { roughness: 0.41, metalness: 0.71, envMapIntensity: 0.86, roughnessMap: textures.knurl() }),
+    rubber: surface('#1D231E', { roughness: 0.87, envMapIntensity: 0.31 }),
+    padding: surface('#4B5449', { roughness: 0.73, bumpMap: grain, bumpScale: 0.0016, envMapIntensity: 0.43 }),
+    mat: surface('#535D52', { roughness: 0.87, bumpMap: grain, bumpScale: 0.0021, envMapIntensity: 0.43 }),
+    roller: surface('#6D8390', { roughness: 0.77, bumpMap: textures.roller(), bumpScale: 0.004, envMapIntensity: 0.51 }),
   };
 }

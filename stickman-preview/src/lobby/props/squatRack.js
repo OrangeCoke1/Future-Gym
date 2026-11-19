@@ -15,10 +15,11 @@ export function buildSquatRack({ batch, materials, signal }) {
       [x, 2.71, -0.58], [x, 2.754, -0.40], [x, 2.754, 0.04],
       [x, 2.723, 0.22], [x, 2.63, 0.32], [x, 2.50, 0.34]], 0.093);
     box(graphite, [0.185, 2.32, 0.178], [x, 1.335, -0.50], 0.046);
+    box(aluminum, [0.018, 1.965, 0.019], [x + side * 0.097, 1.389, -0.456], 0.006);
     cylinder(chrome, 0.014, 2.239, [inner, 1.292, -0.333]);
     cylinder(chrome, 0.014, 2.239, [inner + side * 0.157, 1.292, -0.333]);
-    box(signal, [0.013, 0.455, 0.013], [x + side * 0.094, 1.33, -0.49], 0.005);
-    box(signal, [0.014, 0.162, 0.013], [x + side * 0.076, 0.30, -0.44], 0.005);
+    box(signal, [0.011, 0.455, 0.009], [x + side * 0.097, 1.33, -0.441], 0.003);
+    box(signal, [0.011, 0.162, 0.009], [x + side * 0.076, 0.30, -0.44], 0.003);
 
     for (let i = 0; i < 12; i++) {
       const y = 0.212 + i * 0.049;
@@ -31,7 +32,8 @@ export function buildSquatRack({ batch, materials, signal }) {
     cylinder(graphite, 0.097, 0.082, [wheelX, 2.55, 0.31], FRONT);
     cylinder(aluminum, 0.069, 0.091, [wheelX, 2.55, 0.319], FRONT);
     cylinder(housing, 0.094, 0.079, [wheelX, 1.79, -0.16], FRONT);
-    cylinder(graphite, 0.017, 0.089, [wheelX, 1.79, -0.16], FRONT);
+    cylinder(aluminum, 0.066, 0.012, [wheelX, 1.79, -0.115], FRONT);
+    cylinder(graphite, 0.022, 0.016, [wheelX, 1.79, -0.108], FRONT);
     tube(rubber, [[wheelX, 2.55, 0.359], [wheelX, 2.28, 0.361], [wheelX, 1.74, 0.367], [wheelX, 1.512, 0.374]], 0.006);
     tube(rubber, [[wheelX, 1.518, 0.374], [wheelX - 0.05, 1.438, 0.374], [wheelX - 0.076, 1.350, 0.374],
       [wheelX, 1.337, 0.374], [wheelX + 0.076, 1.350, 0.374], [wheelX + 0.05, 1.438, 0.374],
@@ -51,6 +53,7 @@ export function buildSquatRack({ batch, materials, signal }) {
   box(padding, [0.514, 0.774, 0.126], [0, 0.966, 0.028], 0.055, recline);
   box(padding, [0.439, 0.231, 0.117], [0, 1.432, -0.147], 0.050, recline);
   box(padding, [0.564, 0.105, 0.51], [0, 0.512, 0.413], 0.049, [0.055, 0, 0]);
+  box(graphite, [0.527, 0.024, 0.486], [0, 0.474, 0.414], 0.012, [0.055, 0, 0]);
   box(housing, [0.476, 0.045, 0.471], [0, 0.453, 0.390], 0.019);
   box(housing, [0.111, 0.658, 0.078], [0, 0.918, -0.037], 0.034, recline);
   tube(housing, [[0, 0.46, 0.399], [0, 0.36, 0.49], [0, 0.195, 0.604], [0, 0.079, 0.685]], 0.054);

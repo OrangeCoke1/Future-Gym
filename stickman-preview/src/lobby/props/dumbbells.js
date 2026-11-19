@@ -21,6 +21,10 @@ export function buildDumbbells({ batch, materials, signal, detailed }) {
   box(housing, [width, 0.075, depth], [0, 1.09, 0], 0.035);
   box(housing, [width, 0.089, depth], [0, 0.055, 0], 0.042);
   box(housing, [width - 0.15, 0.064, depth - 0.04], [0, 0.528, 0.011], 0.023);
+  for (const y of [0.493, 1.05]) {
+    box(aluminum, [width - 0.18, 0.018, 0.041], [0, y, 0.297], 0.006);
+    box(signal, [width - 0.24, 0.005, 0.011], [0, y - 0.0095, 0.281], 0.002);
+  }
   for (const x of [-1.301, 1.301]) box(housing, [0.098, 1.05, depth - 0.019], [x, 0.563, 0], 0.045);
   add(roundedPane(width - 0.10, 1.054, 0.13, detailed), padding, [0, 0.554, -0.351]);
   add(roundedBorder(width + 0.02, 1.118, 0.166, 0.078, detailed), housing, [0, 0.568, 0.35]);

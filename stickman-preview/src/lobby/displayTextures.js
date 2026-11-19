@@ -1,3 +1,5 @@
+import { ACCENT } from './materials.js';
+
 function stroke(ctx, points) {
   ctx.beginPath();
   ctx.moveTo(...points[0]);
@@ -7,9 +9,8 @@ function stroke(ctx, points) {
 
 export function paintIcon(ctx, size, id) {
   ctx.scale(size, size);
-  ctx.strokeStyle = '#FDF2FF';
-  ctx.fillStyle = '#FDF2FF';
-  ctx.lineWidth = 0.054;
+  ctx.strokeStyle = ctx.fillStyle = '#FFFDF4';
+  ctx.lineWidth = 0.047;
   ctx.lineCap = ctx.lineJoin = 'round';
 
   if (id === 'dumbbell') {
@@ -43,8 +44,8 @@ export function paintIcon(ctx, size, id) {
 export function paintCoachOutline(ctx, size) {
   ctx.scale(size, size);
   ctx.lineWidth = 0.005;
-  ctx.fillStyle = 'rgba(220,199,255,.14)';
-  ctx.strokeStyle = '#E9D8FF';
+  ctx.fillStyle = 'rgba(213,226,211,.14)';
+  ctx.strokeStyle = '#F1F0E2';
   ctx.beginPath();
   ctx.ellipse(0.5, 0.12, 0.043, 0.056, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -62,7 +63,7 @@ export function paintCoachOutline(ctx, size) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(223,208,255,.43)';
+  ctx.strokeStyle = 'rgba(207,220,208,.46)';
   ctx.lineWidth = 0.0025;
   stroke(ctx, [[0.5, 0.218], [0.5, 0.447], [0.46, 0.548], [0.445, 0.737], [0.46, 0.887]]);
   stroke(ctx, [[0.5, 0.447], [0.54, 0.548], [0.555, 0.737], [0.54, 0.887]]);
@@ -73,29 +74,39 @@ export function paintCoachOutline(ctx, size) {
 export function paintFitnessPanel(ctx, size) {
   ctx.scale(size, size);
   const glass = ctx.createLinearGradient(0, 0, 1, 0.88);
-  glass.addColorStop(0, '#554568');
-  glass.addColorStop(0.54, '#6B5886');
-  glass.addColorStop(1, '#83709D');
+  glass.addColorStop(0, '#202922');
+  glass.addColorStop(0.47, '#101814');
+  glass.addColorStop(1, '#202A27');
   ctx.fillStyle = glass;
   ctx.fillRect(0, 0, 1, 1);
   ctx.lineWidth = 0.002;
-  ctx.strokeStyle = 'rgba(243,221,255,.115)';
+  ctx.strokeStyle = 'rgba(195,211,190,.16)';
   for (let i = 1; i < 10; i++) {
     const v = i / 10;
     stroke(ctx, [[0.045, v], [0.497, v]]);
     stroke(ctx, [[0.05 + v * 0.45, 0.06], [0.05 + v * 0.45, 0.94]]);
   }
 
-  ctx.fillStyle = 'rgba(229,206,255,.08)';
-  ctx.strokeStyle = 'rgba(238,215,255,.37)';
+  ctx.fillStyle = 'rgba(197,214,188,.065)';
+  ctx.strokeStyle = 'rgba(205,218,197,.28)';
   for (let i = 0; i < 3; i++) {
     const y = 0.10 + i * 0.268;
     ctx.beginPath();
-    ctx.roundRect(0.595, y, 0.342, 0.219, 0.045);
+    ctx.roundRect(0.595, y, 0.342, 0.219, 0.023);
     ctx.fill();
     ctx.stroke();
   }
-  ctx.fillStyle = '#F7E9FF';
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28 - 0.25) * Math.PI * 2;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    ctx.strokeStyle = i < 12 ? ACCENT : 'rgba(215,229,205,.32)';
+    stroke(ctx, [[0.681 + dx * 0.039, 0.214 + dy * 0.065], [0.681 + dx * 0.056, 0.214 + dy * 0.096]]);
+  }
+  ctx.save();
+  ctx.translate(0.681, 0.214);
+  ctx.scale(0.57, 0.55);
+  ctx.translate(-0.681, -0.197);
+  ctx.fillStyle = ACCENT;
   ctx.beginPath();
   ctx.moveTo(0.683, 0.256);
   ctx.bezierCurveTo(0.624, 0.196, 0.634, 0.142, 0.659, 0.146);
@@ -103,20 +114,21 @@ export function paintFitnessPanel(ctx, size) {
   ctx.quadraticCurveTo(0.699, 0.135, 0.717, 0.15);
   ctx.bezierCurveTo(0.741, 0.173, 0.718, 0.219, 0.683, 0.256);
   ctx.fill();
-  ctx.strokeStyle = '#E9D7FF';
+  ctx.restore();
+  ctx.strokeStyle = '#F1F0E2';
   ctx.lineWidth = 0.006;
   stroke(ctx, [[0.737, 0.214], [0.761, 0.214], [0.775, 0.183], [0.788, 0.247], [0.804, 0.157],
     [0.815, 0.252], [0.832, 0.212], [0.897, 0.212]]);
   for (const [i, h] of [0.061, 0.091, 0.065, 0.116, 0.09, 0.151, 0.104, 0.137, 0.081, 0.115].entries()) {
-    ctx.fillStyle = i % 3 ? '#E3CCFF' : '#FBF2FF';
+    ctx.fillStyle = i % 3 ? '#94AAA1' : '#F1F0E2';
     ctx.fillRect(0.626 + i * 0.028, 0.556 - h, 0.016, h);
   }
   ctx.lineWidth = 0.013;
-  ctx.strokeStyle = '#F7E9FF';
+  ctx.strokeStyle = ACCENT;
   ctx.beginPath();
   ctx.ellipse(0.68, 0.744, 0.038, 0.068, 0, -Math.PI * 0.26, Math.PI * 1.29);
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(243,222,255,.42)';
+  ctx.strokeStyle = 'rgba(222,232,214,.44)';
   ctx.lineWidth = 0.004;
   for (const [i, end] of [0.881, 0.852, 0.903, 0.815].entries()) {
     const y = 0.696 + i * 0.028;
@@ -127,10 +139,10 @@ export function paintFitnessPanel(ctx, size) {
 export function paintCity(ctx, size, random) {
   ctx.scale(size, size);
   const sky = ctx.createLinearGradient(0, 0, 0, 1);
-  sky.addColorStop(0, '#6F71AA');
-  sky.addColorStop(0.36, '#A29BCB');
-  sky.addColorStop(0.73, '#F2B7D0');
-  sky.addColorStop(1, '#DBA0C4');
+  sky.addColorStop(0, '#516D7C');
+  sky.addColorStop(0.40, '#92AEB6');
+  sky.addColorStop(0.78, '#D2C8B6');
+  sky.addColorStop(1, '#9BA5A5');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, 1, 1);
 
@@ -141,8 +153,8 @@ export function paintCity(ctx, size, random) {
     ctx.translate(x, y);
     ctx.scale(w, h);
     const cloud = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    cloud.addColorStop(0, 'rgba(255,205,235,.30)');
-    cloud.addColorStop(1, 'rgba(255,205,235,0)');
+    cloud.addColorStop(0, 'rgba(236,229,211,.40)');
+    cloud.addColorStop(1, 'rgba(236,229,211,0)');
     ctx.fillStyle = cloud;
     ctx.fillRect(-1, -1, 2, 2);
     ctx.restore();
@@ -151,7 +163,7 @@ export function paintCity(ctx, size, random) {
   function tower(x, base, w, height, layer, spire) {
     const top = base - height;
     const inset = 0.002 + w * 0.16;
-    const colors = [['#B496BC', '#C6A0BD'], ['#7E76AB', '#A48AB2'], ['#4D567E', '#7A7098']][layer];
+    const colors = [['#95A3A8', '#B0B4B2'], ['#607581', '#85969E'], ['#344852', '#627A84']][layer];
     const facade = ctx.createLinearGradient(x, 0, x + w, 0);
     facade.addColorStop(0, colors[0]);
     facade.addColorStop(0.69, colors[0]);
@@ -171,7 +183,7 @@ export function paintCity(ctx, size, random) {
     ctx.fill();
     if (spire) {
       ctx.fillRect(x + w * 0.44, top - height * 0.10, w * 0.1, height * 0.13);
-      ctx.fillStyle = 'rgba(255,221,241,.72)';
+      ctx.fillStyle = 'rgba(255,230,190,.70)';
       ctx.fillRect(x + w * 0.48, top - height * 0.145, Math.max(w * 0.034, 0.0006), height * 0.088);
     }
 
@@ -181,7 +193,7 @@ export function paintCity(ctx, size, random) {
       for (let i = 0; i < columns; i++) {
         const q = random();
         if (q > (layer ? 0.37 : 0.22)) continue;
-        ctx.fillStyle = q < 0.075 ? 'rgba(253,225,238,.72)' : q < 0.18 ? 'rgba(181,177,245,.54)' : 'rgba(250,175,206,.51)';
+        ctx.fillStyle = q < 0.075 ? 'rgba(253,228,185,.79)' : q < 0.18 ? 'rgba(199,228,232,.60)' : 'rgba(241,166,115,.50)';
         ctx.fillRect(x + w * (i + 0.4) / columns, y, w * 0.36 / columns, pitch * 0.25);
       }
     }
@@ -209,22 +221,24 @@ export function paintCity(ctx, size, random) {
     ctx.translate(x, y);
     ctx.scale(scale, scale);
     ctx.rotate(-0.14);
-    ctx.fillStyle = 'rgba(73,72,124,.6)';
+    ctx.fillStyle = 'rgba(40,62,74,.62)';
     ctx.beginPath();
     ctx.ellipse(0, 0, 0.16, 0.042, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(252,224,255,.86)';
-    ctx.lineWidth = 0.007;
+    ctx.strokeStyle = 'rgba(243,239,218,.86)';
+    ctx.lineWidth = 0.0046;
     ctx.beginPath();
     ctx.ellipse(0, -0.004, 0.171, 0.041, 0, Math.PI * 0.08, Math.PI * 1.32);
     ctx.stroke();
+    ctx.fillStyle = 'rgba(246,172,118,.78)';
+    ctx.fillRect(-0.101, 0.021, 0.029, 0.004);
     ctx.restore();
   }
 }
 
 export function paintGrille(ctx, size) {
   ctx.scale(size, size);
-  ctx.fillStyle = 'rgba(54,44,75,.63)';
+  ctx.fillStyle = 'rgba(36,46,43,.74)';
   for (let row = 0; row < 33; row++) {
     for (let col = 0; col < 18; col++) {
       const x = 0.049 + col * 0.052, y = 0.032 + row * 0.029;
