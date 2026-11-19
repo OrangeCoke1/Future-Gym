@@ -48,7 +48,7 @@ defineExpose({ positionLabels, reveal });
   >
     <header class="lobby-header">
       <div class="lobby-title">
-        <h1>{{ t('未来健身 2126') }}</h1>
+        <h1>{{ t('未来健身') }}</h1>
         <p lang="en">
           CAPSULE GYM
         </p>
