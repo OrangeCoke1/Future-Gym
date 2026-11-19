@@ -3,11 +3,15 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import { ACT } from '../src/core/actions.js';
 import { STATIONS } from '../src/lobby/stations.js';
 import { FLIGHT_END, INTRO_END, flightAt, phaseAt, stationRevealAt } from '../src/lobby/timeline.js';
-import { createCamRig, frameCapsule, stationApproach, stationPosition } from '../src/lobby/camRig.js';
+import { createCamRig, frameCapsule, stationApproach } from '../src/lobby/camRig.js';
+import { BAYS, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
 
 describe('lobby stations', () => {
   it('uses unique IDs and real training actions', () => {
-    expect(new Set(STATIONS.map(s => s.id)).size).toBe(4);
+    const ids = new Set(STATIONS.map(s => s.id));
+    expect(ids.size).toBe(4);
+    expect(Object.keys(BAYS).sort()).toEqual([...ids].sort());
+    expect(WALL_PLAQUES.map(({ id }) => id).sort()).toEqual([...ids].sort());
     for (const { act, acts } of STATIONS) {
       expect(acts).toContain(act);
       expect(acts.every(key => Object.hasOwn(ACT, key))).toBe(true);
@@ -55,20 +59,31 @@ describe('capsule timeline', () => {
 });
 
 describe('lobby camera', () => {
-  it('keeps the whole row of station centers and labels in desktop and portrait frames', () => {
+  it('keeps the left cabinet, rear treadmill, right rack and foreground mat in frame', () => {
+    const up = new Vector3(0, 1, 0);
     for (const aspect of [16 / 9, 1440 / 900, 3 / 4, 390 / 844, 320 / 960]) {
       const camera = new PerspectiveCamera();
       const rig = createCamRig(camera);
       rig.resize(aspect);
       rig.apply(1);
       camera.updateMatrixWorld();
-      for (const station of STATIONS) {
-        const center = stationPosition(station.angle);
-        for (const y of [0, 2.73]) {
-          const point = center.clone().setY(y).project(camera);
-          expect(Math.abs(point.x)).toBeLessThan(0.86);
-          expect(Math.abs(point.y)).toBeLessThan(0.76);
-        }
+      const points = {};
+      for (const [id, bay] of Object.entries(BAYS)) {
+        const origin = new Vector3(...bay.position);
+        const label = new Vector3(...bay.anchor).multiplyScalar(bay.scale ?? 1)
+          .applyAxisAngle(up, bay.yaw).add(origin).project(camera);
+        points[id] = origin.project(camera);
+        expect(Math.abs(label.x)).toBeLessThan(0.90);
+        expect(Math.abs(label.y)).toBeLessThan(0.94);
+      }
+      expect(points.dumbbell.x).toBeLessThan(points.cardio.x);
+      expect(points.squat.x).toBeGreaterThan(points.mat.x);
+      expect(points.mat.y).toBeLessThan(points.cardio.y);
+      for (const { y } of WALL_PLAQUES) {
+        const plaque = new Vector3(WALL_PLAQUE_X, y, WALL_PLAQUE_Z).project(camera);
+        expect(plaque.x).toBeGreaterThan(points.squat.x);
+        expect(plaque.x).toBeLessThan(1);
+        expect(Math.abs(plaque.y)).toBeLessThan(1);
       }
     }
   });
@@ -84,7 +99,7 @@ describe('lobby camera', () => {
 
   it('lands 2.2 m in front of the chosen bay and fades only at the end', () => {
     for (const station of STATIONS) {
-      const { end, center } = stationApproach(station.angle);
+      const { end, center } = stationApproach(station.id);
       expect(Math.hypot(end.x - center.x, end.z - center.z)).toBeCloseTo(2.2);
       expect(end.y).toBe(1.45);
     }

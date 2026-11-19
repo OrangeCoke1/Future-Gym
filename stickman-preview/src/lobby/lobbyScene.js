@@ -3,9 +3,9 @@ import { buildCapsule } from './capsule.js';
 import { FLIGHT_END, INTRO_END, flightAt, phaseAt, stationRevealAt } from './timeline.js';
 import { createCamRig, frameCapsule } from './camRig.js';
 import { buildGymRoom } from './gymRoom.js';
-import { ACCENT, color, createEquipmentMaterials } from './materials.js';
+import { color, createEquipmentMaterials } from './materials.js';
 import { createBloom, createEnvironment, supportsHdr } from './post.js';
-import { buildStation, createBayMaterials } from './stationMesh.js';
+import { buildStation } from './stationMesh.js';
 import { STATIONS } from './stations.js';
 import { createLobbyTextures } from './textures.js';
 
@@ -41,16 +41,15 @@ export function createLobby({
   const detailed = suitedForHigh(canvas.clientWidth);
   const textures = createLobbyTextures(detailed);
   const materials = createEquipmentMaterials(textures);
-  const bayMaterials = createBayMaterials(textures);
+  const shadow = new THREE.MeshBasicMaterial({ map: textures.shadow(), transparent: true, depthWrite: false });
   const environment = createEnvironment(renderer);
   const scene = new THREE.Scene();
   const intro = new THREE.Scene();
   scene.environment = intro.environment = environment?.texture ?? null;
-  const key = buildGymRoom(scene, textures, materials, detailed);
+  const { key, coach, menu } = buildGymRoom(scene, textures, materials, detailed);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 45);
   const rig = createCamRig(camera);
-  const accent = color(getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || ACCENT);
-  const stations = STATIONS.map(station => buildStation(station, { detailed, materials, bayMaterials, textures, accent }));
+  const stations = STATIONS.map(station => buildStation(station, { detailed, materials, shadow, textures }));
   scene.add(...stations.map(s => s.group));
 
   let introTime = reduced || skipIntro ? INTRO_END : 0;
@@ -67,7 +66,7 @@ export function createLobby({
   const warmWhite = color('#FFF8EE');
   if (flash) overlay.add(flash);
 
-  const colliders = stations.map(s => s.collider);
+  const colliders = [...stations.map(s => s.collider), ...menu.colliders];
   const labels = STATIONS.map(({ id }) => ({ id, x: 0, y: 0, visible: false }));
   const projected = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
@@ -82,6 +81,7 @@ export function createLobby({
     const id = focus ?? hover;
     if (id === active) return;
     active = id;
+    menu.highlight(id);
     onHover(id);
   }
 
@@ -127,7 +127,7 @@ export function createLobby({
       high = next;
       renderer.shadowMap.enabled = high;
       renderer.shadowMap.needsUpdate = high;
-      for (const station of stations) station.quality(high);
+      coach.quality(high);
       if (!high) {
         disposeBloom();
         key.shadow.dispose();
@@ -168,12 +168,12 @@ export function createLobby({
   }
 
   function updateEquipment(dt, progress = 0, entering = false) {
+    if (!reduced) coach.update(time);
     for (const [i, station] of stations.entries()) {
       const id = STATIONS[i].id;
       const reveal = entering ? stationRevealAt(introTime, i) : 1;
-      const beamFocus = flight ? (flight.station.id === id ? 0.6 : -0.5) * progress : 0;
-      const moved = station.update(dt, time, reveal, id === active, beamFocus, high, reduced);
-      if (moved && high) renderer.shadowMap.needsUpdate = true;
+      const focusLight = flight ? (flight.station.id === id ? 0.6 : -0.5) * progress : 0;
+      station.update(dt, reveal, id === active, focusLight, reduced);
     }
   }
 
@@ -375,7 +375,7 @@ export function createLobby({
     stop();
     for (const [name, fn] of Object.entries(events)) canvas.removeEventListener(name, fn);
     document.removeEventListener('visibilitychange', visibility);
-    for (const station of stations) station.dispose();
+    coach.dispose();
     disposeBloom();
     free(scene);
     freeIntro();

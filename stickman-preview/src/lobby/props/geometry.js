@@ -16,13 +16,6 @@ export function extrude(shape, depth, bevel, detailed) {
   }).translate(0, 0, -depth / 2);
 }
 
-export function footGeometry(radius, detailed) {
-  return lathe([
-    [0, 0], [radius * 0.84, 0], [radius * 0.99, 0.004], [radius, 0.009],
-    [radius * 0.88, 0.026], [radius * 0.77, 0.03], [0, 0.03],
-  ], detailed ? 32 : 16);
-}
-
 export function createPropBatch(group, detailed) {
   const groups = new Map();
   const transform = new THREE.Object3D();
@@ -54,9 +47,6 @@ export function createPropBatch(group, detailed) {
       const curve = new THREE.CatmullRomCurve3(path.map(point => new THREE.Vector3(...point)));
       add(new THREE.TubeGeometry(curve, detailed ? 48 : 24, radius, detailed ? 16 : 8), material, [0, 0, 0]);
     },
-    foot(material, radius, position) {
-      add(footGeometry(radius, detailed), material, position);
-    },
     finish() {
       for (const [material, parts] of groups) {
         const geometry = parts.length === 1 ? parts[0] : mergeBufferGeometries(parts);
@@ -70,4 +60,36 @@ export function createPropBatch(group, detailed) {
       groups.clear();
     },
   };
+}
+
+export function roundedShape(w, h, radius) {
+  const left = -w / 2, right = w / 2, top = h / 2, bottom = -h / 2;
+  const r = Math.min(radius, w / 2, h / 2);
+  const shape = new THREE.Shape();
+  shape.moveTo(left + r, bottom);
+  shape.lineTo(right - r, bottom);
+  shape.quadraticCurveTo(right, bottom, right, bottom + r);
+  shape.lineTo(right, top - r);
+  shape.quadraticCurveTo(right, top, right - r, top);
+  shape.lineTo(left + r, top);
+  shape.quadraticCurveTo(left, top, left, top - r);
+  shape.lineTo(left, bottom + r);
+  shape.quadraticCurveTo(left, bottom, left + r, bottom);
+  return shape;
+}
+
+export function roundedBorder(w, h, radius, width, detailed) {
+  const segments = detailed ? 10 : 6;
+  const outer = roundedShape(w, h, radius);
+  const inner = roundedShape(w - width * 2, h - width * 2, radius - width);
+  outer.holes.push(new THREE.Path(inner.getPoints(segments)));
+  return new THREE.ShapeGeometry(outer, segments);
+}
+
+// ShapeGeometry's default UVs are world units. Fit the image to the full pane.
+export function roundedPane(w, h, radius, detailed) {
+  const geometry = new THREE.ShapeGeometry(roundedShape(w, h, radius), detailed ? 14 : 8);
+  const { uv, position } = geometry.attributes;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, position.getX(i) / w + 0.5, position.getY(i) / h + 0.5);
+  return geometry;
 }

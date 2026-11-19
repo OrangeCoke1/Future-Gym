@@ -1,4 +1,5 @@
 import { CanvasTexture, LinearEncoding, RepeatWrapping, sRGBEncoding } from 'three';
+import { paintCity, paintCoachOutline, paintFitnessPanel, paintGrille, paintIcon } from './displayTextures.js';
 
 export function lobbyRandom(seed) {
   return () => {
@@ -53,20 +54,18 @@ function spaceTexture(ctx, size, panorama) {
 function panelTexture(ctx, size) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, size, size);
-  ctx.strokeStyle = '#CFCBBE';
-  ctx.lineWidth = Math.max(1, size * 0.0025);
-  for (let i = 0; i < 12; i++) {
-    const x = size * i / 12;
+  ctx.strokeStyle = '#DEDAE3';
+  ctx.lineWidth = Math.max(1, size * 0.0016);
+  for (const offset of [0.23, 0.43, 0.58, 0.78]) {
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, size);
+    ctx.moveTo(offset * size, 0);
+    ctx.lineTo(offset * size, size);
     ctx.stroke();
   }
-  for (let i = 1; i < 15; i++) {
-    const y = size * i * 1.6 / 22.8;
+  for (const offset of [0.27, 0.53, 0.76]) {
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(size, y);
+    ctx.moveTo(0, offset * size);
+    ctx.lineTo(size, offset * size);
     ctx.stroke();
   }
 }
@@ -75,14 +74,14 @@ function floorTexture(ctx, size) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, size, size);
   const random = lobbyRandom(22);
-  ctx.fillStyle = 'rgba(0,0,0,.058)';
-  for (let i = 0; i < 3500; i++) {
+  ctx.fillStyle = 'rgba(37,24,57,.05)';
+  for (let i = 0; i < 2800; i++) {
     const grain = 0.5 + random() * size / 700;
     ctx.fillRect(random() * size, random() * size, grain, grain);
   }
-  ctx.fillStyle = '#B8B3A4';
-  const width = size * 0.04 / 9;
-  for (const x of [0.5 - 0.36 / 9, 0.5 + 0.36 / 9]) ctx.fillRect(x * size - width / 2, 0, width, size);
+  ctx.fillStyle = '#EEE9F0';
+  for (const x of [0.22, 0.78]) ctx.fillRect(x * size, 0, size * 0.0016, size);
+  for (const y of [0.22, 0.5, 0.78]) ctx.fillRect(0, y * size, size, size * 0.0018);
 }
 
 function hullSeamTexture(ctx, size) {
@@ -116,29 +115,31 @@ function beltTexture(ctx, size) {
 }
 
 function screenTexture(ctx, size) {
-  ctx.fillStyle = '#151A17';
+  ctx.fillStyle = '#2C2D50';
   ctx.fillRect(0, 0, size, size);
-  ctx.textAlign = 'center';
-  ctx.lineWidth = size * 0.023;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.strokeStyle = '#E0704A';
-  ctx.ellipse(size * 0.5, size * 0.63, size * 0.31, size * 0.49, 0, Math.PI * 1.09, Math.PI * 1.79);
-  ctx.stroke();
-  ctx.fillStyle = '#F1F0E2';
-  ctx.font = `600 ${Math.round(size * 0.25)}px sans-serif`;
-  ctx.fillText('6.5', size * 0.5, size * 0.63);
-  ctx.font = `500 ${Math.round(size * 0.08)}px sans-serif`;
-  ctx.fillText('KM/H', size * 0.5, size * 0.78);
-}
-
-function holeStripTexture(ctx, size) {
-  ctx.fillStyle = '#111512';
-  for (let i = 0; i < 43; i++) {
+  ctx.save();
+  ctx.scale(size, size);
+  ctx.strokeStyle = 'rgba(217,201,255,.28)';
+  ctx.lineWidth = 0.0025;
+  for (let i = 1; i < 5; i++) {
+    const y = 0.12 + i * 0.145;
     ctx.beginPath();
-    ctx.ellipse(size * 0.5, size * (i + 0.5) / 43, size * 0.152, size * 0.00454, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(0.07, y);
+    ctx.lineTo(0.93, y);
+    ctx.stroke();
   }
+  const graph = [[0.088, .68], [.15, .62], [.21, .65], [.28, .51], [.33, .55], [.40, .38],
+    [.46, .49], [.52, .43], [.56, .54], [.64, .41], [.70, .52], [.79, .36], [.84, .45], [.91, .31]];
+  ctx.strokeStyle = '#D7C1FF';
+  ctx.lineWidth = 0.011;
+  ctx.beginPath();
+  ctx.moveTo(...graph[0]);
+  for (const point of graph.slice(1)) ctx.lineTo(...point);
+  ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#F4E9FF';
+  ctx.font = `500 ${Math.round(size * 0.108)}px sans-serif`;
+  ctx.fillText('6.5 KM/H', size * 0.08, size * 0.275);
 }
 
 function knurlTexture(ctx, size) {
@@ -182,30 +183,6 @@ function rollerTexture(ctx, size) {
   }
 }
 
-function rollTexture(ctx, size) {
-  ctx.strokeStyle = '#53604B';
-  ctx.lineWidth = size * 0.018;
-  ctx.beginPath();
-  for (let i = 0; i <= 165; i++) {
-    const angle = i / 165 * Math.PI * 6;
-    const radius = size * (0.065 + i / 165 * 0.345);
-    const x = size * 0.5 + Math.cos(angle) * radius, y = size * 0.5 + Math.sin(angle) * radius;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-}
-
-function weightTexture(ctx, size) {
-  ctx.font = `600 ${Math.round(size * 0.079)}px sans-serif`;
-  ctx.fillStyle = '#E0704A';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  for (const [i, weight] of ['5', '7.5', '10', '12.5', '15'].entries()) {
-    ctx.fillText(weight, size * (i + 0.5) / 5, size / 2);
-  }
-}
-
 export function createLobbyTextures(detailed) {
   const maps = new Map();
   const limit = detailed ? 1024 : 512;
@@ -232,16 +209,8 @@ export function createLobbyTextures(detailed) {
     ])),
     wash: () => get('wash', 128, (ctx, size) => {
       const tint = ctx.createLinearGradient(0, 0, size, 0);
-      tint.addColorStop(0, 'rgba(255,244,226,.64)');
-      tint.addColorStop(1, 'rgba(255,244,226,0)');
-      ctx.fillStyle = tint;
-      ctx.fillRect(0, 0, size, size);
-    }),
-    beam: (ceiling) => get(ceiling ? 'beam-down' : 'beam-up', 128, (ctx, size) => {
-      const tint = ctx.createLinearGradient(0, ceiling ? 0 : size, 0, ceiling ? size : 0);
-      tint.addColorStop(0, 'rgba(255,244,226,.065)');
-      tint.addColorStop(0.46, 'rgba(255,244,226,.022)');
-      tint.addColorStop(1, 'rgba(255,244,226,0)');
+      tint.addColorStop(0, 'rgba(243,188,255,.52)');
+      tint.addColorStop(1, 'rgba(243,188,255,0)');
       ctx.fillStyle = tint;
       ctx.fillRect(0, 0, size, size);
     }),
@@ -252,32 +221,14 @@ export function createLobbyTextures(detailed) {
       return map;
     },
     screen: () => get('console', 512, screenTexture),
-    holes: () => get('holes', 512, holeStripTexture),
     knurl: () => get('knurl', 128, knurlTexture, true),
     grain: () => get('grain', 256, grainTexture, true),
     roller: () => get('roller', 256, rollerTexture, true),
-    roll: () => get('roll', 128, rollTexture),
-    weights: () => get('weights', 512, weightTexture),
-    engraving: (name, caption) => get(name, 512, (ctx, size) => {
-      ctx.scale(1, 0.68);
-      ctx.fillStyle = '#8E8A7E';
-      ctx.font = `600 ${Math.round(size * 0.052)}px sans-serif`;
-      ctx.fillText(name, size * 0.04, size * 0.12 / 0.68);
-      ctx.font = `500 ${Math.round(size * 0.035)}px sans-serif`;
-      ctx.fillText(caption, size * 0.04, size * 0.153 / 0.68);
-    }),
-    wallMark: () => get('wall-mark', 512, (ctx, size) => {
-      ctx.fillStyle = '#B9B4A6';
-      ctx.textBaseline = 'middle';
-      ctx.scale(1, 6.3);
-      ctx.font = `500 ${Math.round(size * 0.06)}px sans-serif`;
-      const lettering = 'C A P S U L E   G Y M   ·   2 1 2 6';
-      let x = (size - ctx.measureText(lettering).width) / 2;
-      for (const char of lettering) {
-        ctx.fillText(char, x, size * 0.5 / 6.3);
-        x += ctx.measureText(char).width;
-      }
-    }),
+    city: () => get('city', 1024, (ctx, size) => paintCity(ctx, size, lobbyRandom(2126))),
+    fitness: () => get('fitness', 512, paintFitnessPanel),
+    coachOutline: () => get('coach-outline', 512, paintCoachOutline),
+    icon: id => get(`icon-${id}`, 128, (ctx, size) => paintIcon(ctx, size, id)),
+    grille: () => get('grille', 256, paintGrille),
     dispose() {
       for (const map of maps.values()) map.dispose();
       maps.clear();

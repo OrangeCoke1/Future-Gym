@@ -1,71 +1,61 @@
-import * as THREE from 'three';
-import { extrude } from './geometry.js';
+import { TorusGeometry } from 'three';
+import { lathe, roundedBorder, roundedPane } from './geometry.js';
 
-const LENGTHWISE = [Math.PI / 2, 0, 0];
-const TRAY_TILT = -Math.PI / 15;
+const LONG = [Math.PI / 2, 0, 0];
 
-function hexHead(radius, detailed) {
-  const shape = new THREE.Shape();
-  for (let i = 0; i < 6; i++) {
-    const theta = (i + 0.5) * Math.PI / 3;
-    const x = radius * Math.cos(theta), y = radius * Math.sin(theta);
-    if (i === 0) shape.moveTo(x, y);
-    else shape.lineTo(x, y);
-  }
-  shape.closePath();
-  return extrude(shape, 0.048, 0.004, detailed);
-}
+const dumbbellHead = [
+  [0, -0.035], [0.064, -0.035], [0.080, -0.029], [0.089, -0.014], [0.091, 0.012],
+  [0.086, 0.030], [0.069, 0.041], [0, 0.041],
+];
+const bellProfile = [
+  [0, 0], [0.052, 0], [0.076, 0.009], [0.096, 0.039], [0.104, 0.084],
+  [0.098, 0.135], [0.065, 0.165], [0, 0.171],
+];
 
-function weightLabel(radius, slot) {
-  const geometry = new THREE.PlaneGeometry(radius * 1.04, radius * 0.92);
-  const uv = geometry.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) + slot) / 5, 0.4 + uv.getY(i) * 0.2);
-  return geometry;
-}
+export function buildDumbbells({ batch, materials, signal, detailed }) {
+  const { add, box, cylinder, tube } = batch;
+  const { housing, graphite, aluminum, chrome, grip, rubber, padding, roller } = materials;
+  const segments = detailed ? 32 : 18;
+  const width = 2.70, depth = 0.72;
 
-export function buildDumbbells({ batch, materials: { graphite, aluminum, grip, rubber }, textures, detailed }) {
-  const { add, box, cylinder, foot } = batch;
-  const digits = new THREE.MeshBasicMaterial({
-    map: textures.weights(), transparent: true, alphaTest: 0.14, depthWrite: false,
-  });
-  const bracket = new THREE.Shape();
-  bracket.moveTo(-0.305, 0.024);
-  bracket.lineTo(0.295, 0.024);
-  bracket.lineTo(0.141, 0.824);
-  bracket.quadraticCurveTo(0.138, 0.844, 0.114, 0.845);
-  bracket.lineTo(-0.195, 0.845);
-  bracket.quadraticCurveTo(-0.217, 0.839, -0.222, 0.812);
-  bracket.closePath();
+  box(housing, [width, 0.075, depth], [0, 1.09, 0], 0.035);
+  box(housing, [width, 0.089, depth], [0, 0.055, 0], 0.042);
+  box(housing, [width - 0.15, 0.064, depth - 0.04], [0, 0.528, 0.011], 0.023);
+  for (const x of [-1.301, 1.301]) box(housing, [0.098, 1.05, depth - 0.019], [x, 0.563, 0], 0.045);
+  add(roundedPane(width - 0.10, 1.054, 0.13, detailed), padding, [0, 0.554, -0.351]);
+  add(roundedBorder(width + 0.02, 1.118, 0.166, 0.078, detailed), housing, [0, 0.568, 0.35]);
+  add(roundedBorder(width - 0.124, 0.978, 0.12, 0.013, detailed), signal, [0, 0.567, 0.358]);
 
-  for (const sign of [-1, 1]) {
-    add(extrude(bracket, 0.05, 0.008, detailed), graphite, [sign * 0.8, 0, 0], [0, Math.PI / 2, 0]);
-    foot(rubber, 0.038, [sign * 0.8, 0, -0.241]);
-    foot(rubber, 0.038, [sign * 0.8, 0, 0.235]);
-  }
-
-  for (const [row, { y, z, quantities }] of [
-    { y: 0.777, z: -0.085, quantities: [0, 1] },
-    { y: 0.478, z: 0.139, quantities: [2, 3, 4] },
-  ].entries()) {
-    box(aluminum, [1.55, 0.03, 0.32], [0, y, z], 0.009, [TRAY_TILT, 0, 0]);
-    box(rubber, [1.55, 0.04, 0.015], [0, y + 0.065, z + 0.152], 0.006, [TRAY_TILT, 0, 0]);
-    const spacing = row === 0 ? 0.33 : 0.24;
-    for (const [pair, slot] of quantities.entries()) {
-      const radius = 0.055 + slot * 0.0075;
-      const head = hexHead(radius, detailed);
-      for (const offset of [0, 1]) {
-        const x = (pair * 2 + offset - (quantities.length * 2 - 1) / 2) * spacing;
-        const h = y + radius + 0.014;
-        cylinder(grip, 0.017, 0.13, [x, h, z], LENGTHWISE);
-        for (const sign of [-1, 1]) {
-          const angle = sign === 1 ? 0 : Math.PI;
-          const end = z + sign * 0.09;
-          add(head.clone(), rubber, [x, h - sign * 0.012, end], [TRAY_TILT, 0, 0]);
-          cylinder(aluminum, radius * 0.6, 0.009, [x, h - sign * 0.016, end + sign * 0.027], LENGTHWISE);
-          add(weightLabel(radius, slot), digits, [x, h - sign * 0.016, end + sign * 0.032], [0, angle, 0]);
-        }
-      }
-      head.dispose();
+  for (let i = 0; i < 5; i++) {
+    const x = -0.89 + i * 0.408;
+    const scale = 1.05 - i * 0.07, h = 0.573 + 0.091 * scale;
+    cylinder(grip, 0.017, 0.15, [x, h, 0.005], LONG);
+    for (const side of [-1, 1]) {
+      const z = side * 0.097;
+      const direction = side === 1 ? -Math.PI / 2 : Math.PI / 2;
+      add(lathe(dumbbellHead.map(pair => pair.map(value => value * scale)), segments), aluminum, [x, h, z],
+        [direction, 0, 0]);
+      cylinder(graphite, 0.050 * scale, 0.009, [x, h, z + side * 0.04], LONG);
     }
+    add(new TorusGeometry(0.033 * scale, 0.0033, 6, 24), signal, [x, h, 0.144]);
   }
+
+  for (const [x, scale] of [[-0.73, 1.12], [-0.43, 0.94]]) {
+    add(lathe(bellProfile.map(pair => pair.map(value => value * scale)), segments), graphite, [x, 0.108, 0.056]);
+    tube(chrome, [[x - 0.057 * scale, 0.24, 0.056], [x - 0.068 * scale, 0.29, 0.056],
+      [x - 0.039, 0.314 * scale, 0.056], [x + 0.035, 0.314 * scale, 0.056],
+      [x + 0.066 * scale, 0.29, 0.056], [x + 0.055 * scale, 0.24, 0.056]], 0.014);
+  }
+  cylinder(roller, 0.081, 0.455, [0.449, 0.191, -0.033], [0.09, 0, Math.PI / 2]);
+  cylinder(padding, 0.052, 0.017, [0.680, 0.191, -0.033], [0, 0, Math.PI / 2]);
+
+  const bottle = lathe([
+    [0, 0], [0.046, 0.001], [0.053, 0.017], [0.053, 0.179], [0.044, 0.203], [0.032, 0.206],
+  ], segments);
+  add(bottle, housing, [0.224, 1.128, 0.103]);
+  cylinder(graphite, 0.039, 0.031, [0.224, 1.349, 0.103]);
+  box(rubber, [0.030, 0.013, 0.025], [0.229, 1.369, 0.103], 0.005);
+  cylinder(graphite, 0.102, 0.141, [-0.648, 1.212, 0.095]);
+  cylinder(housing, 0.106, 0.024, [-0.648, 1.144, 0.095]);
+  add(new TorusGeometry(0.101, 0.004, 8, 36), signal, [-0.648, 1.276, 0.095], LONG);
 }

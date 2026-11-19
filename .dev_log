@@ -187,3 +187,7 @@
 ## [2026-11-19 20:02] Capsule gym showroom v2
 - **Goal**: Rebuild the lobby as a warm capsule showroom and preserve the M4 interaction contract.
 - **Changes**: Add the baked enclosure, recessed porthole, resin floor, life-size equipment, shared materials and coach points. Add r149 HDR bloom, shadows and adaptive quality cleanup. Retune the 4.6-second opening, station camera and flat HUD, update tests and the Chinese README.
+
+## [2026-11-19 20:35] Lilac fitness cabin
+- **Goal**: Match the reference layout in the interactive 3D lobby.
+- **Changes**: Rebuild the rounded room, city window, ring lighting, wall fixtures and four equipment models in lilac. Connect the wall plaques to the station picker and update camera framing, HUD, tests and the README.

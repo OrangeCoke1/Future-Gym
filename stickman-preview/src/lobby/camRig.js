@@ -1,35 +1,27 @@
 import { MathUtils, Vector3 } from 'three';
 
+import { BAYS } from './layout.js';
+
 const pivot = new Vector3(0, 1, 0);
 const up = new Vector3(0, 1, 0);
-const aim = new Vector3(0, 1.05, -1.6);
-const homeZ = 5.4;
-const stationZ = -1.6;
-
-export function stationPosition(angle) {
-  // The life-size equipment and its bays have to fit inside the 8.3 m floor chord.
-  return new Vector3(angle / 18, 0, stationZ);
-}
-
-export function stationYaw(x) {
-  return MathUtils.clamp(Math.atan2(-x, homeZ - stationZ), -0.21, 0.21);
-}
+const aim = new Vector3(0, 1.29, -3.6);
+const homeZ = 5.42;
 
 /** @param {number} aspect Canvas width divided by height. */
 export function roomFraming(aspect) {
   const portrait = aspect < 1;
-  const z = portrait ? 9.5 : homeZ;
-  const y = portrait ? 2.2 : 1.6;
-  const halfWidth = portrait ? 0.41 : 0.70;
-  const fov = Math.max(40, MathUtils.radToDeg(2 * Math.atan(halfWidth / aspect)));
+  const z = portrait ? 6.36 : homeZ;
+  const y = portrait ? 1.67 : 1.58;
+  const halfWidth = portrait ? 0.60 : 0.72;
+  const fov = Math.max(46, MathUtils.radToDeg(2 * Math.atan(halfWidth / aspect)));
   return { z, y, fov };
 }
 
-export function stationApproach(angle) {
-  const center = stationPosition(angle);
-  const yaw = stationYaw(center.x);
+export function stationApproach(id) {
+  const { position, yaw, focus } = BAYS[id];
+  const center = new Vector3(...position);
   const end = center.clone().add(new Vector3(2.2 * Math.sin(yaw), 1.45, 2.2 * Math.cos(yaw)));
-  center.y = 0.92;
+  center.y = focus;
   return { end, center };
 }
 
@@ -47,7 +39,7 @@ export function frameCapsule(camera, aspect, phase, capsule) {
 }
 
 export function createCamRig(camera) {
-  const home = new Vector3(0, 1.6, homeZ);
+  const home = new Vector3(0, 1.58, homeZ);
   const target = new Vector3();
   const right = new Vector3();
   let yaw = 0, pitch = 0, wantYaw = 0, wantPitch = 0;
@@ -73,7 +65,7 @@ export function createCamRig(camera) {
     pitch = MathUtils.lerp(pitch, wantPitch, mix);
     right.set(Math.cos(yaw), 0, -Math.sin(yaw));
     camera.position.copy(home).sub(pivot).applyAxisAngle(up, yaw).applyAxisAngle(right, pitch).add(pivot);
-    camera.position.z = MathUtils.lerp(stationZ + 1.5, camera.position.z, pullback);
+    camera.position.z = MathUtils.lerp(0.63, camera.position.z, pullback);
     camera.position.y = MathUtils.lerp(1.45, camera.position.y, pullback);
     target.copy(aim).sub(pivot).applyAxisAngle(up, yaw * 0.36).applyAxisAngle(right, pitch * 0.36).add(pivot);
     camera.lookAt(target);
@@ -81,7 +73,7 @@ export function createCamRig(camera) {
 
   function flightTo(station) {
     const from = camera.position.clone(), lookFrom = target.clone();
-    const { end, center } = stationApproach(station.angle);
+    const { end, center } = stationApproach(station.id);
     return progress => {
       camera.position.lerpVectors(from, end, progress);
       camera.lookAt(target.lerpVectors(lookFrom, center, progress));
