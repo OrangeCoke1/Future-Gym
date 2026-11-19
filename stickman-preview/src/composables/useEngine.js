@@ -18,7 +18,7 @@ export function provideEngine({ profile, opts, camView }) {
   const sync = () => { for (const k in pick) { const v = pick[k](); if (live[k] !== v) live[k] = v; } };
   engine.onFrame(sync);
   // method calls change S right away; mirror them without waiting for the next frame
-  for (const m of ['setAction', 'setPlaying', 'setSpeed', 'setMode', 'clearSets', 'setSource', 'setCamView', 'setMirror']) { const f = engine[m]; engine[m] = (...a) => { f(...a); sync(); }; }
+  for (const m of ['setAction', 'saveSet', 'setPlaying', 'setSpeed', 'setMode', 'clearSets', 'setSource', 'setCamView', 'setMirror']) { const f = engine[m]; engine[m] = (...a) => { f(...a); sync(); }; }
   const ctx = { engine, live };
   provide(KEY, ctx);
   engine.start();
