@@ -1,0 +1,29 @@
+.lobby{position:fixed;inset:0;overflow:hidden;background:#0B0F12;color:var(--ivory);isolation:isolate}
+.lobby-hud{--edge:clamp(16px,4vw,64px);position:absolute;inset:0}
+.lobby-header,.lobby-footer{position:absolute;left:var(--edge);right:var(--edge);display:flex;justify-content:space-between;gap:var(--u)}
+.lobby-header{top:max(var(--edge),env(safe-area-inset-top));align-items:flex-start}
+.lobby-title{min-width:0}
+.lobby-title h1{margin:0;font-size:clamp(21px,4.2vw,58px);line-height:1.04;letter-spacing:-.035em;font-weight:650}
+.lobby-title p{margin:.65em 0 0;font-size:clamp(10px,1.1vw,14px);letter-spacing:.2em}
+.lobby-lang{flex:none;background:var(--ivory);color:var(--ink)}
+.lobby-lang button{min-height:32px;padding-inline:9px}
+.lobby-footer{bottom:max(var(--edge),env(safe-area-inset-bottom));flex-direction:column;gap:8px}
+.lobby-footer p{margin:0;font-size:12px}
+.lobby-stations{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--ivory);color:var(--ink)}
+.lobby-stations button{display:grid;gap:4px;min-width:0;min-height:64px;padding:12px clamp(10px,2.2vw,32px);text-align:left;border:0;background:transparent;cursor:pointer}
+.lobby-stations button+button{border-inline-start:1px solid var(--line)}
+.lobby-stations button:hover,.lobby-stations button:focus-visible{background:var(--acc)}
+.lobby-stations button:focus-visible{outline-offset:-3px}
+.lobby-stations strong{line-height:1.2;overflow-wrap:anywhere}
+.lobby-stations span{font-size:11px}
+.lobby-capsule{position:absolute;left:50%;top:47%;width:clamp(80px,15vmin,160px);transform:translate(-50%,-50%);display:grid;gap:4px}
+.lobby-capsule i{height:clamp(68px,13vmin,150px);background:var(--ivory);border-radius:100% 100% 8px 8px}
+.lobby-capsule i+i{border-radius:8px 8px 100% 100%;background:var(--paper)}
+.top-brand{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.top-brand .btn{color:inherit;text-decoration:none;white-space:nowrap}
+@media (max-width:600px){
+  .lobby-stations{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lobby-stations button:nth-child(odd){border-inline-start:0}
+  .lobby-stations button:nth-child(n+3){border-top:1px solid var(--line)}
+  .top-brand .brand{display:none}
+}

@@ -167,3 +167,7 @@
   - `stickman-preview/README.md`：以 04e1fd2^ 版本为底稿重写，补上路由 / 布局 / 页面、Node 版本、测试与 CI、start.bat 自动重建、MediaPipe 三个模型、Mixamo 角色、「摄像头模式」一节（动作复现与相位同步、浮窗、跟随原理）、「摄像头跟随」面板（预设、识别精度、宽松深蹲规则与校准、手部识别、腿部模式）、帧异常处理与舞台释放
   - 文档：`CLAUDE.md`（Node 范围、npm test、功能说明书一句恢复、start.bat、布局 ref）、`GLOBAL_RULES.md`（技术栈加 ESLint 10 / Vitest 5、新增 DOM Access 与 Tests 两条、布局一条改为模板 ref）、根目录 `README.md`（Node 版本、npm test、Windows 双击运行的新行为、链接回功能说明书）；`.prompt.md` 为本部分计划
   - 验证：干净 npm ci、lint、34 项测试、build 通过，npm audit 0；真实 Node 18 下 npm ci 报 EBADENGINE；与第一部分构建对比 #app DOM（含卡片 style）和布局恢复 / 方向键 / 拖动 / 抽屉焦点 / 未知路由一致，保存的 xbot 启动加载，假摄像头下浮窗默认位置相同（730, 381, 宽 320），dev 模式无 Vue 报错，设置同步与故障注入结果不变；临时空白路由切换 20 次后 0 条 WebGL 上下文警告、外观保留，之后键盘和拖动调整尺寸仍生效（临时路由未提交）；build-if-stale.ps1 在 Linux 版 PowerShell 7.6.9 + 假 npm 下 8 种情况结果正确，真实项目上改动源码后重建、再运行显示已是最新（未在 Windows 的 cmd.exe / PowerShell 5.1 上测）
+
+## [2026-11-19 18:45] Capsule gym entry points
+- **Goal**: Add the lobby route and preserve a direct training entry for exhibitions.
+- **Changes**: Lazy training route, guarded action query, return link, four-station HUD, visit store and action registry test.

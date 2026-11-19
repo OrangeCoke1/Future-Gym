@@ -26,8 +26,16 @@ defineExpose({ focus: () => drawerBtn.value && drawerBtn.value.focus() });
 
 <template>
   <header class="top">
-    <div class="brand">
-      DEVICE LAB<small>{{ t('未来健身 2126') }}</small>
+    <div class="top-brand">
+      <RouterLink
+        class="btn"
+        :to="{ name: 'lobby' }"
+      >
+        {{ t('← 健身舱') }}
+      </RouterLink>
+      <div class="brand">
+        DEVICE LAB<small>{{ t('未来健身 2126') }}</small>
+      </div>
     </div>
     <div class="top-c">
       <div
