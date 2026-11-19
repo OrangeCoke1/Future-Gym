@@ -171,3 +171,15 @@
 ## [2026-11-19 18:45] Capsule gym entry points
 - **Goal**: Add the lobby route and preserve a direct training entry for exhibitions.
 - **Changes**: Lazy training route, guarded action query, return link, four-station HUD, visit store and action registry test.
+
+## [2026-11-19 18:48] Interactive procedural gym room
+- **Goal**: Add an asset-free Three.js lobby with accessible station picking.
+- **Changes**: Room geometry, equipment and rings, camera rig, pointer and keyboard interaction, projected HUD labels, WebGL lifecycle and fallback.
+
+## [2026-11-19 18:51] Opening the capsule
+- **Goal**: Run the 4.3-second opening on first entry and offer an immediate skip.
+- **Changes**: Lathe capsule, articulated lid, sweep, glow and mist; pure intro timeline and tests; room dissolve; session state, skip, reduced motion and CSS fallback.
+
+## [2026-11-19 19:00] Capsule gym transition and acceptance
+- **Goal**: Finish station-to-training flight, portrait framing and exhibition handoff.
+- **Changes**: 0.9-second camera flight and flat fade, rendering and HUD refinement, route recovery, camera and timeline tests, both READMEs and the architecture guide. Lobby entry requires no external fonts or models. The training camera releases on exit and reconnects when returning with camera mode selected.
