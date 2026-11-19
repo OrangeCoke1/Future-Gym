@@ -6,3 +6,8 @@ stickman-preview/tools/poses/
 .DS_Store
 Thumbs.db
 .idea/
+.claude/
+.dev_log
+.prompt.md
+CLAUDE.md
+GLOBAL_RULES.md

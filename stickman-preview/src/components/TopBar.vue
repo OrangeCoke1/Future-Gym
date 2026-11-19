@@ -1,16 +1,21 @@
 <script setup>
-// Top bar: brand, data source (demo / camera), language, local clock, panel button.
+// Top bar: brand, data source (demo / camera), language, local clock, account (log in, or the user menu), panel button.
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '../i18n/useI18n.js';
 import { LANGS } from '../i18n/messages.js';
 import { useEngine } from '../composables/useEngine.js';
 import { useSettings } from '../stores/settings.js';
+import { useAuth } from '../stores/auth.js';
+import AuthDialog from './AuthDialog.vue';
+import UserMenu from './UserMenu.vue';
 
 defineProps({ drawerOpen: { type: Boolean, required: true } });
 const emit = defineEmits({ toggleDrawer: null });
 const { t, lang } = useI18n();
 const { engine, live } = useEngine();
 const settings = useSettings();
+const auth = useAuth();
+const authOpen = ref(false);
 function pickCamView(v) { settings.camView = v; }
 const LANG_NAMES = { zh: ['中文', 'zh-CN'], ja: ['日本語', 'ja'], en: ['EN', 'en'] };
 
@@ -105,6 +110,17 @@ defineExpose({ focus: () => drawerBtn.value && drawerBtn.value.focus() });
         class="clock"
         :aria-label="t('本机时间')"
       >{{ clock }}</span>
+      <template v-if="auth.ready">
+        <UserMenu v-if="auth.user" />
+        <button
+          v-else
+          class="btn"
+          type="button"
+          @click="authOpen = true"
+        >
+          {{ t('登录') }}
+        </button>
+      </template>
       <button
         ref="drawerBtn"
         class="btn"
@@ -116,5 +132,6 @@ defineExpose({ focus: () => drawerBtn.value && drawerBtn.value.focus() });
         {{ t('面板') }}
       </button>
     </div>
+    <AuthDialog v-model:open="authOpen" />
   </header>
 </template>
