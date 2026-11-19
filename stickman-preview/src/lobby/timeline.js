@@ -1,4 +1,4 @@
-export const INTRO_END = 4.3;
+export const INTRO_END = 4.6;
 export const FLIGHT_END = 0.9;
 
 function progress(t, start, end) { return Math.min(1, Math.max(0, (t - start) / (end - start))); }
@@ -7,31 +7,30 @@ export function easeInOutCubic(p) {
   return p < 0.5 ? 4 * p ** 3 : 1 - (-2 * p + 2) ** 3 / 2;
 }
 
-export function easeOutBack(p) {
-  if (p === 0 || p === 1) return p;
-  const d = p - 1;
-  return 1 + 2.22 * d ** 3 + 1.22 * d ** 2;
-}
+function easeOutCubic(p) { return 1 - (1 - p) ** 3; }
 
 export function stationRevealAt(t, index) {
-  const start = 3.2 + index * 0.12;
-  return 1 - (1 - progress(t, start, start + 0.74)) ** 3;
+  const start = 3.6 + index * 0.12;
+  return easeOutCubic(progress(t, start, start + 0.6));
 }
 
 /** @param {number} t Elapsed seconds of the intro. */
 export function phaseAt(t) {
+  const room = t >= 3.5;
   return {
-    seam: easeInOutCubic(progress(t, 0.6, 1.3)),
-    lid: Math.min(1, easeOutBack(progress(t, 1.1, 2.3))),
-    burst: 1 - (1 - progress(t, 1.3, 2.4)) ** 2,
-    dolly: easeInOutCubic(progress(t, 2, 3.6)),
-    reveal: 1 - (1 - progress(t, 3.2, INTRO_END)) ** 3,
+    fadeIn: easeOutCubic(progress(t, 0, 0.8)),
+    seam: easeInOutCubic(progress(t, 0.8, 1.4)),
+    pop: easeOutCubic(progress(t, 1.4, 1.7)),
+    lid: easeInOutCubic(progress(t, 1.7, 2.4)),
+    burst: progress(t, 1.72, 2.72),
+    align: easeInOutCubic(progress(t, 2.2, 3.13)),
+    dolly: progress(t, 2.2, 3.5) ** 3,
+    flash: room ? 1 - easeInOutCubic(progress(t, 3.5, 3.7)) : easeInOutCubic(progress(t, 3.3, 3.5)),
+    room,
+    pullback: easeOutCubic(progress(t, 3.6, INTRO_END)),
+    reveal: easeOutCubic(progress(t, 3.77, INTRO_END)),
     ready: t >= INTRO_END,
   };
-}
-
-export function lidAngleAt(t) {
-  return -110 * Math.PI / 180 * easeOutBack(progress(t, 1.1, 2.3));
 }
 
 export function flightAt(t) {

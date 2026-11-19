@@ -42,7 +42,10 @@ defineExpose({ positionLabels, reveal });
 </script>
 
 <template>
-  <div class="lobby-hud">
+  <div
+    class="lobby-hud"
+    :class="{ 'is-ready': ready, 'is-fallback': fallback }"
+  >
     <header class="lobby-header">
       <div class="lobby-title">
         <h1>{{ t('未来健身 2126') }}</h1>
