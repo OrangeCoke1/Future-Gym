@@ -29,7 +29,7 @@ function fade(opacity) {
 }
 
 function unavailable() {
-  if (lobby) finishIntro();
+  finishIntro();
   busy.value = false;
   fade(0);
   lobby = null;
@@ -44,8 +44,8 @@ function skip() {
 }
 
 function skipOnKey(event) {
-  if (ready.value || event.isComposing) return;
-  if (event.key === 'Escape' || event.code === 'Space') event.preventDefault();
+  if (ready.value || event.isComposing || (event.key !== 'Escape' && event.code !== 'Space')) return;
+  event.preventDefault();
   skip();
 }
 

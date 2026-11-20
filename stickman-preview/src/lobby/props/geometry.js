@@ -10,12 +10,6 @@ export function roundBox(w, h, d, detailed, radius = Math.min(w, h, d) * 0.2) {
   return new RoundedBoxGeometry(w, h, d, detailed ? 3 : 2, radius);
 }
 
-export function extrude(shape, depth, bevel, detailed) {
-  return new THREE.ExtrudeGeometry(shape, {
-    depth, bevelThickness: bevel, bevelSize: bevel, bevelSegments: detailed ? 3 : 1, curveSegments: detailed ? 8 : 4,
-  }).translate(0, 0, -depth / 2);
-}
-
 export function createPropBatch(group, detailed) {
   const groups = new Map();
   const transform = new THREE.Object3D();

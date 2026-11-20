@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { buildCapsule } from './capsule.js';
-import { FLIGHT_END, INTRO_END, flightAt, phaseAt, stationRevealAt } from './timeline.js';
-import { createCamRig, frameCapsule } from './camRig.js';
+import { FLIGHT_END, INTRO_END, flightAt, phaseAt } from './timeline.js';
+import { createCamRig } from './camRig.js';
 import { buildGymRoom } from './gymRoom.js';
-import { color, createEquipmentMaterials } from './materials.js';
+import { createEquipmentMaterials } from './materials.js';
+import { createPhotoIntro } from './photoIntro.js';
 import { createBloom, createEnvironment, supportsHdr } from './post.js';
 import { buildStation } from './stationMesh.js';
 import { STATIONS } from './stations.js';
@@ -44,8 +44,7 @@ export function createLobby({
   const shadow = new THREE.MeshBasicMaterial({ map: textures.shadow(), transparent: true, depthWrite: false });
   const environment = createEnvironment(renderer);
   const scene = new THREE.Scene();
-  const intro = new THREE.Scene();
-  scene.environment = intro.environment = environment?.texture ?? null;
+  scene.environment = environment?.texture ?? null;
   const { key, coach, menu } = buildGymRoom(scene, textures, materials, detailed);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 45);
   const rig = createCamRig(camera);
@@ -56,15 +55,7 @@ export function createLobby({
   let ready = introTime === INTRO_END;
   let inRoom = ready;
   if (inRoom) canvas.classList.add('is-in-room');
-  let capsule = ready ? null : buildCapsule(intro, textures, detailed);
-  const introCamera = new THREE.PerspectiveCamera(36, 1, 0.038, 70);
-  const overlay = new THREE.Scene();
-  const screenCamera = new THREE.Camera();
-  let flash = capsule ? new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({
-    transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
-  })) : null;
-  const warmWhite = color('#FFF8EE');
-  if (flash) overlay.add(flash);
+  let intro;
 
   const colliders = [...stations.map(s => s.collider), ...menu.colliders];
   const labels = STATIONS.map(({ id }) => ({ id, x: 0, y: 0, visible: false }));
@@ -162,48 +153,47 @@ export function createLobby({
     ready = true;
     introTime = INTRO_END;
     if (!inRoom) showRoom();
-    freeIntro();
+    intro?.dispose();
+    intro = null;
     onReveal(1);
     onReady();
   }
 
-  function updateEquipment(dt, progress = 0, entering = false) {
+  function updateEquipment(dt, progress = 0) {
     if (!reduced) coach.update(time);
     for (const [i, station] of stations.entries()) {
       const id = STATIONS[i].id;
-      const reveal = entering ? stationRevealAt(introTime, i) : 1;
       const focusLight = flight ? (flight.station.id === id ? 0.6 : -0.5) * progress : 0;
-      station.update(dt, reveal, id === active, focusLight, reduced);
+      station.update(dt, id === active, focusLight, reduced);
     }
   }
 
   function drawIntro(dt) {
     const phase = phaseAt(introTime);
-    if (phase.ready && inRoom) {
+    if (phase.ready) {
       revealRoom();
       return false;
     }
-    onReveal(phase.reveal);
-    const cutting = phase.room && !inRoom;
-    if (phase.room) {
-      if (cutting) showRoom();
-      rig.apply(dt, phase.pullback);
-      updateEquipment(dt, 0, true);
-      render(scene, camera, dt);
-    } else {
-      capsule.update(introTime, phase);
-      frameCapsule(introCamera, width / height, phase, capsule.pod);
-      render(intro, introCamera, dt);
+    if (!intro) {
+      rig.apply(0);
+      const home = camera.clone();
+      rig.intro(0);
+      updateEquipment(0);
+      intro = createPhotoIntro(renderer, scene, home, camera, detailed);
+      if (!intro) {
+        revealRoom();
+        return false;
+      }
     }
 
-    const opacity = cutting ? 1 : Math.max(phase.flash, 1 - phase.fadeIn);
-    if (opacity > 0) {
-      flash.material.color.copy(warmWhite).multiplyScalar(Number(phase.fadeIn === 1));
-      flash.material.opacity = opacity;
-      renderer.autoClear = false;
-      renderer.render(overlay, screenCamera);
-      renderer.autoClear = true;
+    rig.intro(phase.orbit);
+    if (phase.room > 0) {
+      if (!inRoom) showRoom();
+      updateEquipment(dt);
+      render(scene, camera, dt);
     }
+    intro.render(camera, phase, introTime);
+    onReveal(phase.room);
     return true;
   }
 
@@ -222,7 +212,7 @@ export function createLobby({
       }
       return;
     }
-    rig.apply(dt, 1, reduced);
+    rig.apply(dt, reduced);
     updateEquipment(dt);
     render(scene, camera, dt);
     if (mouse && !drag) {
@@ -347,26 +337,17 @@ export function createLobby({
   for (const [name, fn] of Object.entries(events)) canvas.addEventListener(name, fn);
   document.addEventListener('visibilitychange', visibility);
 
-  function free(...worlds) {
+  function freeRoom() {
     const resources = new Set();
-    for (const world of worlds) {
-      world.traverse(obj => {
-        if (obj.geometry) resources.add(obj.geometry);
-        if (obj.shadow) resources.add(obj.shadow);
-        if (obj.material) {
-          for (const material of [obj.material].flat()) resources.add(material);
-        }
-      });
-      world.clear();
-    }
+    scene.traverse(obj => {
+      if (obj.geometry) resources.add(obj.geometry);
+      if (obj.shadow) resources.add(obj.shadow);
+      if (obj.material) {
+        for (const material of [obj.material].flat()) resources.add(material);
+      }
+    });
+    scene.clear();
     for (const resource of resources) resource.dispose();
-  }
-
-  function freeIntro() {
-    if (!capsule) return;
-    free(intro, overlay);
-    capsule = flash = null;
-    intro.environment = null;
   }
 
   function dispose() {
@@ -377,8 +358,9 @@ export function createLobby({
     document.removeEventListener('visibilitychange', visibility);
     coach.dispose();
     disposeBloom();
-    free(scene);
-    freeIntro();
+    freeRoom();
+    intro?.dispose();
+    intro = null;
     textures.dispose();
     environment?.dispose();
     renderer.dispose();

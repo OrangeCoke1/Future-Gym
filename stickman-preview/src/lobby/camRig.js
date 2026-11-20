@@ -25,19 +25,6 @@ export function stationApproach(id) {
   return { end, center };
 }
 
-export function frameCapsule(camera, aspect, phase, capsule) {
-  const { x, y, z } = capsule.position;
-  const facing = capsule.rotation.y;
-  const angle = facing + (1 - phase.align) * Math.PI / 6;
-  const start = Math.max(5.8, 4.55 / aspect) + (1 - phase.fadeIn) * 0.4;
-  const distance = MathUtils.lerp(start, 1.27, phase.dolly);
-  camera.aspect = aspect;
-  camera.fov = MathUtils.lerp(36, 50, phase.dolly);
-  camera.position.set(x + Math.sin(angle) * distance, y + 0.2 * (1 - phase.dolly), z + Math.cos(angle) * distance);
-  camera.lookAt(x + Math.sin(facing) * 0.18, y, z + Math.cos(facing) * 0.18);
-  camera.updateProjectionMatrix();
-}
-
 export function createCamRig(camera) {
   const home = new Vector3(0, 1.58, homeZ);
   const target = new Vector3();
@@ -59,17 +46,21 @@ export function createCamRig(camera) {
 
   function release() { wantYaw = wantPitch = 0; }
 
-  function apply(dt, pullback = 1, instant = false) {
-    const mix = instant ? 1 : 1 - Math.pow(0.92, dt * 60);
-    yaw = MathUtils.lerp(yaw, wantYaw, mix);
-    pitch = MathUtils.lerp(pitch, wantPitch, mix);
+  function frame(yaw, pitch) {
     right.set(Math.cos(yaw), 0, -Math.sin(yaw));
     camera.position.copy(home).sub(pivot).applyAxisAngle(up, yaw).applyAxisAngle(right, pitch).add(pivot);
-    camera.position.z = MathUtils.lerp(0.63, camera.position.z, pullback);
-    camera.position.y = MathUtils.lerp(1.45, camera.position.y, pullback);
     target.copy(aim).sub(pivot).applyAxisAngle(up, yaw * 0.36).applyAxisAngle(right, pitch * 0.36).add(pivot);
     camera.lookAt(target);
   }
+
+  function apply(dt, instant = false) {
+    const mix = instant ? 1 : 1 - Math.pow(0.92, dt * 60);
+    yaw = MathUtils.lerp(yaw, wantYaw, mix);
+    pitch = MathUtils.lerp(pitch, wantPitch, mix);
+    frame(yaw, pitch);
+  }
+
+  function intro(orbit) { frame(0.32 * (1 - orbit), 0); }
 
   function flightTo(station) {
     const from = camera.position.clone(), lookFrom = target.clone();
@@ -80,5 +71,5 @@ export function createCamRig(camera) {
     };
   }
 
-  return { resize, drag, release, apply, flightTo };
+  return { resize, drag, release, apply, intro, flightTo };
 }
