@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { FLIGHT_END, INTRO_END, flightAt, phaseAt } from './timeline.js';
 import { createCamRig } from './camRig.js';
+import { buildCapsule } from './capsule.js';
 import { buildGymRoom } from './gymRoom.js';
 import { createEquipmentMaterials } from './materials.js';
-import { createPhotoIntro } from './photoIntro.js';
+import { createParticleIntro } from './particleIntro.js';
 import { createBloom, createEnvironment, supportsHdr } from './post.js';
 import { buildStation } from './stationMesh.js';
 import { STATIONS } from './stations.js';
@@ -55,7 +56,7 @@ export function createLobby({
   let ready = introTime === INTRO_END;
   let inRoom = ready;
   if (inRoom) canvas.classList.add('is-in-room');
-  let intro;
+  let capsule, particles, captured = false;
 
   const colliders = [...stations.map(s => s.collider), ...menu.colliders];
   const labels = STATIONS.map(({ id }) => ({ id, x: 0, y: 0, visible: false }));
@@ -153,8 +154,7 @@ export function createLobby({
     ready = true;
     introTime = INTRO_END;
     if (!inRoom) showRoom();
-    intro?.dispose();
-    intro = null;
+    freeIntro();
     onReveal(1);
     onReady();
   }
@@ -174,25 +174,33 @@ export function createLobby({
       revealRoom();
       return false;
     }
-    if (!intro) {
+    if (!captured && (textures.cityReady() || phase.entered)) {
+      captured = true;
       rig.apply(0);
-      const home = camera.clone();
-      rig.intro(0);
       updateEquipment(0);
-      intro = createPhotoIntro(renderer, scene, home, camera, detailed);
-      if (!intro) {
-        revealRoom();
-        return false;
-      }
+      particles = createParticleIntro(renderer, scene, camera, detailed);
+      last = null;
+    }
+    if (phase.entered && !particles) {
+      revealRoom();
+      return false;
     }
 
-    rig.intro(phase.orbit);
+    rig.intro(phase);
+    const showCapsule = phase.doorwayFade < 1;
+    if (showCapsule) {
+      capsule ??= buildCapsule(textures, detailed, scene.environment);
+      capsule.update(phase);
+      render(capsule.scene, camera, dt);
+    } else {
+      freeCapsule();
+    }
     if (phase.room > 0) {
       if (!inRoom) showRoom();
       updateEquipment(dt);
       render(scene, camera, dt);
     }
-    intro.render(camera, phase, introTime);
+    if (phase.entered) particles.render(camera, phase, introTime, showCapsule || phase.room > 0);
     onReveal(phase.room);
     return true;
   }
@@ -337,7 +345,7 @@ export function createLobby({
   for (const [name, fn] of Object.entries(events)) canvas.addEventListener(name, fn);
   document.addEventListener('visibilitychange', visibility);
 
-  function freeRoom() {
+  function freeScene(scene) {
     const resources = new Set();
     scene.traverse(obj => {
       if (obj.geometry) resources.add(obj.geometry);
@@ -350,6 +358,18 @@ export function createLobby({
     for (const resource of resources) resource.dispose();
   }
 
+  function freeCapsule() {
+    if (!capsule) return;
+    freeScene(capsule.scene);
+    capsule = null;
+  }
+
+  function freeIntro() {
+    freeCapsule();
+    particles?.dispose();
+    particles = null;
+  }
+
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -358,9 +378,8 @@ export function createLobby({
     document.removeEventListener('visibilitychange', visibility);
     coach.dispose();
     disposeBloom();
-    freeRoom();
-    intro?.dispose();
-    intro = null;
+    freeScene(scene);
+    freeIntro();
     textures.dispose();
     environment?.dispose();
     renderer.dispose();

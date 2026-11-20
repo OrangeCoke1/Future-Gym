@@ -1,6 +1,6 @@
-import { CanvasTexture, LinearEncoding, RepeatWrapping, sRGBEncoding } from 'three';
-import { paintCity, paintCoachOutline, paintFitnessPanel, paintGrille, paintIcon } from './displayTextures.js';
-import { ACCENT } from './materials.js';
+import { CanvasTexture, LinearEncoding, LinearFilter, RepeatWrapping, sRGBEncoding } from 'three';
+import { paintCoachOutline, paintFitnessPanel, paintGrille, paintIcon } from './displayTextures.js';
+import { ACCENT, NAVY } from './materials.js';
 
 export function lobbyRandom(seed) {
   return () => {
@@ -18,35 +18,64 @@ function radial(ctx, size, stops) {
 }
 
 function panelTexture(ctx, size) {
-  ctx.fillStyle = '#F8F9F5';
+  ctx.fillStyle = '#F5F7FB';
   ctx.fillRect(0, 0, size, size);
-  const seam = Math.max(1, size * 0.0016);
-  for (const offset of [0.23, 0.43, 0.58, 0.78]) {
-    ctx.fillStyle = '#C6CBC1';
-    ctx.fillRect(offset * size, 0, seam, size);
-    ctx.fillStyle = '#FFF';
-    ctx.fillRect(offset * size + seam, 0, seam, size);
+  ctx.scale(size, size);
+  ctx.lineWidth = 0.0037;
+  ctx.strokeStyle = '#8291A6';
+  for (const x of [0.21, 0.39, 0.61, 0.79]) {
+    const slope = x < 0.5 ? 0.03 : -0.03;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 0.20);
+    ctx.lineTo(x + slope, 0.254);
+    ctx.lineTo(x + slope, 0.75);
+    ctx.lineTo(x, 0.81);
+    ctx.lineTo(x, 1);
+    ctx.stroke();
   }
-  for (const offset of [0.27, 0.53, 0.76]) {
-    ctx.fillStyle = '#C6CBC1';
-    ctx.fillRect(0, offset * size, size, seam);
-    ctx.fillStyle = '#FFF';
-    ctx.fillRect(0, offset * size + seam, size, seam);
-  }
+  ctx.strokeRect(0, 0.43, 1, 0.122);
 }
 
 function floorTexture(ctx, size) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, size, size);
   const random = lobbyRandom(22);
-  ctx.fillStyle = 'rgba(44,48,40,.09)';
+  ctx.fillStyle = 'rgba(34,48,68,.12)';
   for (let i = 0; i < 2800; i++) {
     const grain = 0.5 + random() * size / 700;
     ctx.fillRect(random() * size, random() * size, grain, grain);
   }
-  ctx.fillStyle = '#D9DED4';
-  for (const x of [0.22, 0.78]) ctx.fillRect(x * size, 0, size * 0.0016, size);
-  for (const y of [0.22, 0.5, 0.78]) ctx.fillRect(0, y * size, size, size * 0.0018);
+  ctx.fillStyle = '#A5B2C5';
+  for (const x of [0.11, 0.24, 0.76, 0.89]) ctx.fillRect(x * size, 0, size * 0.0026, size);
+  for (const y of [0.22, 0.5, 0.78]) ctx.fillRect(0, y * size, size, size * 0.0023);
+}
+
+function capsuleTexture(ctx, size) {
+  ctx.fillStyle = '#F1F4FB';
+  ctx.fillRect(0, 0, size, size);
+  ctx.save();
+  ctx.scale(size, size);
+  ctx.strokeStyle = '#76859B';
+  ctx.lineWidth = 0.0034;
+  for (const x of [0.105, 0.415, 0.585, 0.895]) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0.105);
+    ctx.lineTo(x, 0.255);
+    ctx.lineTo(x + 0.026, 0.298);
+    ctx.lineTo(x + 0.026, 0.718);
+    ctx.lineTo(x, 0.761);
+    ctx.lineTo(x, 0.91);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.translate(size * 0.265, size * 0.478);
+  ctx.rotate(Math.PI / 2);
+  ctx.fillStyle = NAVY;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `italic bold ${Math.round(size * 0.075)}px Arial, sans-serif`;
+  ctx.fillText('A.I.M.S.', 0, 0, size * 0.34);
 }
 
 function beltTexture(ctx, size) {
@@ -57,11 +86,11 @@ function beltTexture(ctx, size) {
 }
 
 function screenTexture(ctx, size) {
-  ctx.fillStyle = '#111B17';
+  ctx.fillStyle = '#131D2D';
   ctx.fillRect(0, 0, size, size);
   ctx.save();
   ctx.scale(size, size);
-  ctx.strokeStyle = 'rgba(200,211,192,.25)';
+  ctx.strokeStyle = 'rgba(180,204,237,.25)';
   ctx.lineWidth = 0.0025;
   for (let i = 1; i < 5; i++) {
     const y = 0.12 + i * 0.145;
@@ -79,7 +108,7 @@ function screenTexture(ctx, size) {
   for (const point of graph.slice(1)) ctx.lineTo(...point);
   ctx.stroke();
   ctx.restore();
-  ctx.fillStyle = '#F1F0E2';
+  ctx.fillStyle = '#EAF2FF';
   ctx.font = `600 ${Math.round(size * 0.108)}px sans-serif`;
   ctx.fillText('6.5 KM/H', size * 0.08, size * 0.275);
 }
@@ -128,6 +157,7 @@ function rollerTexture(ctx, size) {
 export function createLobbyTextures(detailed) {
   const maps = new Map();
   const limit = detailed ? 1024 : 512;
+  let skyline, cityReady = false;
   function get(key, size, paint, linear = false) {
     if (maps.has(key)) return maps.get(key);
     const canvas = document.createElement('canvas');
@@ -138,16 +168,41 @@ export function createLobbyTextures(detailed) {
     maps.set(key, map);
     return map;
   }
+
+  function city() {
+    const map = get('city', 32, (ctx, size) => {
+      const sky = ctx.createLinearGradient(0, 0, 0, size);
+      sky.addColorStop(0, '#8DA9C6');
+      sky.addColorStop(1, '#526880');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, size, size);
+    });
+    if (!skyline) {
+      map.minFilter = LinearFilter;
+      map.generateMipmaps = false;
+      skyline = new Image();
+      skyline.onload = () => {
+        map.image = skyline;
+        map.needsUpdate = true;
+        cityReady = true;
+      };
+      skyline.onerror = () => { cityReady = true; };
+      skyline.src = `${import.meta.env.BASE_URL}models/lobby-skyline.webp`;
+    }
+    return map;
+  }
+
   return {
     panels: () => get('panels', 1024, panelTexture),
     floor: () => get('floor', 1024, floorTexture),
+    capsuleSkin: () => get('capsule-skin', 1024, capsuleTexture),
     shadow: () => get('shadow', 256, (ctx, size) => radial(ctx, size, [
-      [0, 'rgba(30,32,28,.45)'], [0.55, 'rgba(30,32,28,.29)'], [1, 'rgba(30,32,28,0)'],
+      [0, 'rgba(13,21,34,.54)'], [0.55, 'rgba(13,21,34,.32)'], [1, 'rgba(13,21,34,0)'],
     ])),
     wash: () => get('wash', 128, (ctx, size) => {
       const tint = ctx.createLinearGradient(0, 0, size, 0);
-      tint.addColorStop(0, 'rgba(255,233,189,.52)');
-      tint.addColorStop(1, 'rgba(255,233,189,0)');
+      tint.addColorStop(0, 'rgba(204,227,255,.52)');
+      tint.addColorStop(1, 'rgba(204,227,255,0)');
       ctx.fillStyle = tint;
       ctx.fillRect(0, 0, size, size);
     }),
@@ -161,12 +216,21 @@ export function createLobbyTextures(detailed) {
     knurl: () => get('knurl', 128, knurlTexture, true),
     grain: () => get('grain', 256, grainTexture, true),
     roller: () => get('roller', 256, rollerTexture, true),
-    city: () => get('city', 1024, (ctx, size) => paintCity(ctx, size, lobbyRandom(2126))),
+    city,
+    cityReady: () => cityReady,
+    wordmark: () => get('wordmark', 512, (ctx, size) => {
+      ctx.fillStyle = NAVY;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `italic 900 ${Math.round(size * 0.23)}px Arial, sans-serif`;
+      ctx.fillText('A.I.M.S.', size / 2, size / 2, size * 0.86);
+    }),
     fitness: () => get('fitness', 512, paintFitnessPanel),
     coachOutline: () => get('coach-outline', 512, paintCoachOutline),
     icon: id => get(`icon-${id}`, 128, (ctx, size) => paintIcon(ctx, size, id)),
     grille: () => get('grille', 256, paintGrille),
     dispose() {
+      if (skyline) skyline.onload = skyline.onerror = null;
       for (const map of maps.values()) map.dispose();
       maps.clear();
     },

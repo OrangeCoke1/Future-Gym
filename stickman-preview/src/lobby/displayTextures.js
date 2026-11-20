@@ -44,8 +44,8 @@ export function paintIcon(ctx, size, id) {
 export function paintCoachOutline(ctx, size) {
   ctx.scale(size, size);
   ctx.lineWidth = 0.005;
-  ctx.fillStyle = 'rgba(213,226,211,.14)';
-  ctx.strokeStyle = '#F1F0E2';
+  ctx.fillStyle = 'rgba(205,226,255,.14)';
+  ctx.strokeStyle = '#EAF2FF';
   ctx.beginPath();
   ctx.ellipse(0.5, 0.12, 0.043, 0.056, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -63,7 +63,7 @@ export function paintCoachOutline(ctx, size) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(207,220,208,.46)';
+  ctx.strokeStyle = 'rgba(196,220,252,.46)';
   ctx.lineWidth = 0.0025;
   stroke(ctx, [[0.5, 0.218], [0.5, 0.447], [0.46, 0.548], [0.445, 0.737], [0.46, 0.887]]);
   stroke(ctx, [[0.5, 0.447], [0.54, 0.548], [0.555, 0.737], [0.54, 0.887]]);
@@ -74,21 +74,21 @@ export function paintCoachOutline(ctx, size) {
 export function paintFitnessPanel(ctx, size) {
   ctx.scale(size, size);
   const glass = ctx.createLinearGradient(0, 0, 1, 0.88);
-  glass.addColorStop(0, '#202922');
-  glass.addColorStop(0.47, '#101814');
-  glass.addColorStop(1, '#202A27');
+  glass.addColorStop(0, '#26354C');
+  glass.addColorStop(0.47, '#101B2E');
+  glass.addColorStop(1, '#1F3048');
   ctx.fillStyle = glass;
   ctx.fillRect(0, 0, 1, 1);
   ctx.lineWidth = 0.002;
-  ctx.strokeStyle = 'rgba(195,211,190,.16)';
+  ctx.strokeStyle = 'rgba(177,203,239,.16)';
   for (let i = 1; i < 10; i++) {
     const v = i / 10;
     stroke(ctx, [[0.045, v], [0.497, v]]);
     stroke(ctx, [[0.05 + v * 0.45, 0.06], [0.05 + v * 0.45, 0.94]]);
   }
 
-  ctx.fillStyle = 'rgba(197,214,188,.065)';
-  ctx.strokeStyle = 'rgba(205,218,197,.28)';
+  ctx.fillStyle = 'rgba(176,208,246,.065)';
+  ctx.strokeStyle = 'rgba(183,209,245,.28)';
   for (let i = 0; i < 3; i++) {
     const y = 0.10 + i * 0.268;
     ctx.beginPath();
@@ -99,7 +99,7 @@ export function paintFitnessPanel(ctx, size) {
   for (let i = 0; i < 28; i++) {
     const a = (i / 28 - 0.25) * Math.PI * 2;
     const dx = Math.cos(a), dy = Math.sin(a);
-    ctx.strokeStyle = i < 12 ? ACCENT : 'rgba(215,229,205,.32)';
+    ctx.strokeStyle = i < 12 ? ACCENT : 'rgba(205,225,250,.32)';
     stroke(ctx, [[0.681 + dx * 0.039, 0.214 + dy * 0.065], [0.681 + dx * 0.056, 0.214 + dy * 0.096]]);
   }
   ctx.save();
@@ -115,12 +115,12 @@ export function paintFitnessPanel(ctx, size) {
   ctx.bezierCurveTo(0.741, 0.173, 0.718, 0.219, 0.683, 0.256);
   ctx.fill();
   ctx.restore();
-  ctx.strokeStyle = '#F1F0E2';
+  ctx.strokeStyle = '#EAF2FF';
   ctx.lineWidth = 0.006;
   stroke(ctx, [[0.737, 0.214], [0.761, 0.214], [0.775, 0.183], [0.788, 0.247], [0.804, 0.157],
     [0.815, 0.252], [0.832, 0.212], [0.897, 0.212]]);
   for (const [i, h] of [0.061, 0.091, 0.065, 0.116, 0.09, 0.151, 0.104, 0.137, 0.081, 0.115].entries()) {
-    ctx.fillStyle = i % 3 ? '#94AAA1' : '#F1F0E2';
+    ctx.fillStyle = i % 3 ? '#91AACC' : '#EAF2FF';
     ctx.fillRect(0.626 + i * 0.028, 0.556 - h, 0.016, h);
   }
   ctx.lineWidth = 0.013;
@@ -128,111 +128,11 @@ export function paintFitnessPanel(ctx, size) {
   ctx.beginPath();
   ctx.ellipse(0.68, 0.744, 0.038, 0.068, 0, -Math.PI * 0.26, Math.PI * 1.29);
   ctx.stroke();
-  ctx.strokeStyle = 'rgba(222,232,214,.44)';
+  ctx.strokeStyle = 'rgba(211,229,253,.44)';
   ctx.lineWidth = 0.004;
   for (const [i, end] of [0.881, 0.852, 0.903, 0.815].entries()) {
     const y = 0.696 + i * 0.028;
     stroke(ctx, [[0.749, y], [end, y]]);
-  }
-}
-
-export function paintCity(ctx, size, random) {
-  ctx.scale(size, size);
-  const sky = ctx.createLinearGradient(0, 0, 0, 1);
-  sky.addColorStop(0, '#516D7C');
-  sky.addColorStop(0.40, '#92AEB6');
-  sky.addColorStop(0.78, '#D2C8B6');
-  sky.addColorStop(1, '#9BA5A5');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, 1, 1);
-
-  for (let i = 0; i < 28; i++) {
-    const x = random(), y = 0.18 + random() * 0.44;
-    const w = 0.019 + random() * 0.12, h = 0.009 + random() * 0.016;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(w, h);
-    const cloud = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    cloud.addColorStop(0, 'rgba(236,229,211,.40)');
-    cloud.addColorStop(1, 'rgba(236,229,211,0)');
-    ctx.fillStyle = cloud;
-    ctx.fillRect(-1, -1, 2, 2);
-    ctx.restore();
-  }
-
-  function tower(x, base, w, height, layer, spire) {
-    const top = base - height;
-    const inset = 0.002 + w * 0.16;
-    const colors = [['#95A3A8', '#B0B4B2'], ['#607581', '#85969E'], ['#344852', '#627A84']][layer];
-    const facade = ctx.createLinearGradient(x, 0, x + w, 0);
-    facade.addColorStop(0, colors[0]);
-    facade.addColorStop(0.69, colors[0]);
-    facade.addColorStop(0.71, colors[1]);
-    facade.addColorStop(1, colors[1]);
-    ctx.fillStyle = facade;
-    ctx.beginPath();
-    ctx.moveTo(x, base);
-    ctx.lineTo(x, top + height * 0.11);
-    ctx.lineTo(x + inset, top + height * 0.065);
-    ctx.lineTo(x + inset, top);
-    ctx.lineTo(x + w - inset, top);
-    ctx.lineTo(x + w - inset, top + height * 0.06);
-    ctx.lineTo(x + w, top + height * 0.11);
-    ctx.lineTo(x + w, base);
-    ctx.closePath();
-    ctx.fill();
-    if (spire) {
-      ctx.fillRect(x + w * 0.44, top - height * 0.10, w * 0.1, height * 0.13);
-      ctx.fillStyle = 'rgba(255,230,190,.70)';
-      ctx.fillRect(x + w * 0.48, top - height * 0.145, Math.max(w * 0.034, 0.0006), height * 0.088);
-    }
-
-    const pitch = 0.0105 - layer * 0.0013;
-    const columns = Math.max(2, Math.floor(w / 0.004));
-    for (let y = top + height * 0.14; y < base - pitch; y += pitch) {
-      for (let i = 0; i < columns; i++) {
-        const q = random();
-        if (q > (layer ? 0.37 : 0.22)) continue;
-        ctx.fillStyle = q < 0.075 ? 'rgba(253,228,185,.79)' : q < 0.18 ? 'rgba(199,228,232,.60)' : 'rgba(241,166,115,.50)';
-        ctx.fillRect(x + w * (i + 0.4) / columns, y, w * 0.36 / columns, pitch * 0.25);
-      }
-    }
-  }
-
-  for (const [layer, count] of [44, 38, 31].entries()) {
-    for (let i = 0; i < count; i++) {
-      const x = i / count + random() * 0.015 - 0.015;
-      const w = 0.012 + random() * (0.025 + layer * 0.008);
-      const height = 0.067 + random() * (0.16 + layer * 0.034);
-      tower(x, 0.85 + layer * 0.078 + random() * 0.04, w, height, layer, random() > 0.73);
-    }
-    if (layer === 1) {
-      tower(0.309, 0.99, 0.051, 0.671, layer, true);
-      tower(0.681, 1.00, 0.039, 0.456, layer, true);
-    }
-    if (layer === 2) {
-      tower(0.076, 1.00, 0.031, 0.353, layer, true);
-      tower(0.823, 1.00, 0.045, 0.409, layer, true);
-    }
-  }
-
-  for (const [x, y, scale] of [[0.805, 0.313, 1], [0.552, 0.552, 0.53], [0.222, 0.583, 0.29]]) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(scale, scale);
-    ctx.rotate(-0.14);
-    ctx.fillStyle = 'rgba(40,62,74,.62)';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 0.16, 0.042, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(243,239,218,.86)';
-    ctx.lineWidth = 0.0046;
-    ctx.beginPath();
-    ctx.ellipse(0, -0.004, 0.171, 0.041, 0, Math.PI * 0.08, Math.PI * 1.32);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(246,172,118,.78)';
-    ctx.fillRect(-0.101, 0.021, 0.029, 0.004);
-    ctx.restore();
   }
 }
 

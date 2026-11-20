@@ -1,6 +1,6 @@
 import { MathUtils, Vector3 } from 'three';
 
-import { BAYS } from './layout.js';
+import { BAYS, HATCH } from './layout.js';
 
 const pivot = new Vector3(0, 1, 0);
 const up = new Vector3(0, 1, 0);
@@ -29,13 +29,18 @@ export function createCamRig(camera) {
   const home = new Vector3(0, 1.58, homeZ);
   const target = new Vector3();
   const right = new Vector3();
-  let yaw = 0, pitch = 0, wantYaw = 0, wantPitch = 0;
+  let yaw = 0, pitch = 0, wantYaw = 0, wantPitch = 0, homeFov = 46;
 
   function resize(aspect) {
     const { z, y, fov } = roomFraming(aspect);
     camera.aspect = aspect;
-    camera.fov = fov;
+    homeFov = fov;
     home.set(0, y, z);
+    lens(homeFov);
+  }
+
+  function lens(fov) {
+    camera.fov = fov;
     camera.updateProjectionMatrix();
   }
 
@@ -57,10 +62,28 @@ export function createCamRig(camera) {
     const mix = instant ? 1 : 1 - Math.pow(0.92, dt * 60);
     yaw = MathUtils.lerp(yaw, wantYaw, mix);
     pitch = MathUtils.lerp(pitch, wantPitch, mix);
+    if (camera.fov !== homeFov) lens(homeFov);
     frame(yaw, pitch);
   }
 
-  function intro(orbit) { frame(0.32 * (1 - orbit), 0); }
+  function intro({ approach, entered, advance, orbit }) {
+    if (entered) {
+      camera.position.set(-0.93 * orbit, MathUtils.lerp(HATCH.y, home.y, advance),
+        MathUtils.lerp(HATCH.z - 0.065, home.z, advance));
+      camera.lookAt(0.18 * orbit, MathUtils.lerp(HATCH.y, aim.y, advance), aim.z);
+      lens(homeFov);
+      return;
+    }
+    const startFov = MathUtils.clamp(homeFov - 11, 36, 61);
+    const startDistance = Math.max(4.9, 1.91 / (Math.tan(MathUtils.degToRad(startFov * 0.5)) * camera.aspect));
+    const distance = MathUtils.lerp(startDistance, -0.065, approach);
+    const yaw = 0.57 * (1 - approach);
+    camera.position.set(Math.sin(yaw) * distance, HATCH.y + 0.54 * (1 - approach),
+      HATCH.z + Math.cos(yaw) * distance);
+    const doorAim = MathUtils.lerp(HATCH.z - 1.48, HATCH.z - 0.04, MathUtils.smoothstep(approach, 0, 0.59));
+    camera.lookAt(0, HATCH.y, MathUtils.lerp(doorAim, aim.z, MathUtils.smoothstep(approach, 0.72, 1)));
+    lens(MathUtils.lerp(startFov, homeFov, approach));
+  }
 
   function flightTo(station) {
     const from = camera.position.clone(), lookFrom = target.clone();
