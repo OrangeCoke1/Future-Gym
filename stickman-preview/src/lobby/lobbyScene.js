@@ -6,7 +6,7 @@ import { CITY_FAR } from './cityScene.js';
 import { buildGymRoom } from './gymRoom.js';
 import { createEquipmentMaterials } from './materials.js';
 import { createParticleIntro } from './particleIntro.js';
-import { createBloom, createEnvironment, supportsHdr } from './post.js';
+import { createBloom, createEnvironment, roomPixelRatio, supportsHdr } from './post.js';
 import { buildStation } from './stationMesh.js';
 import { STATIONS } from './stations.js';
 import { createLobbyTextures } from './textures.js';
@@ -68,7 +68,7 @@ export function createLobby({
   let width = 0, height = 0, raf = null, last = null, time = 0, disposed = false;
   let drag = null, active = null, focus = null, hover = null, mouse = null;
   let flight = null;
-  let high = false, autoLow = false, bloom, sampledSeconds = 0, sampledFrames = 0;
+  let high = false, autoLow = false, reducedResolution = false, bloom, sampledSeconds = 0, sampledFrames = 0;
 
   function updateHighlight() {
     const id = focus ?? hover;
@@ -127,9 +127,11 @@ export function createLobby({
         key.shadow.map = null;
       }
     }
-    renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio || 1, 1.75) : 1);
+    const displayRatio = high ? window.devicePixelRatio || 1 : 1;
+    const ratio = high || autoLow ? roomPixelRatio(width, height, displayRatio, reducedResolution || autoLow) : 1;
+    renderer.setPixelRatio(ratio);
     renderer.setSize(width, height, false);
-    bloom?.resize(width, height);
+    bloom?.resize();
   }
 
   function render(world, view, dt) {
@@ -139,7 +141,7 @@ export function createLobby({
     }
     if (!bloom) {
       bloom = createBloom(renderer, world, view);
-      bloom.resize(width, height);
+      bloom.resize();
     }
     bloom.render(world, view, dt);
   }
@@ -245,11 +247,17 @@ export function createLobby({
     last = now;
     time += dt;
     if (!ready) introTime += dt;
-    if (high && dt > 0 && sampledSeconds < 2) {
+    if (ready && high && !flight && dt > 0 && sampledSeconds < 2) {
       sampledSeconds += dt;
       sampledFrames++;
       if (sampledSeconds >= 2 && sampledSeconds / sampledFrames > 0.028) {
-        autoLow = true;
+        const currentRatio = renderer.getPixelRatio();
+        if (!reducedResolution && roomPixelRatio(width, height, currentRatio, true) < currentRatio) {
+          reducedResolution = true;
+          sampledSeconds = sampledFrames = 0;
+        } else {
+          autoLow = true;
+        }
         resizeRenderer();
       }
     }
@@ -272,6 +280,7 @@ export function createLobby({
     if (w === width && h === height) return;
     width = w;
     height = h;
+    sampledSeconds = sampledFrames = 0;
     resizeRenderer();
     rig.resize(width / height);
     if (!document.hidden) draw(0);
