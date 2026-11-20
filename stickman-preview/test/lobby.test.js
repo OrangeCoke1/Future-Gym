@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { ACT } from '../src/core/actions.js';
 import { STATIONS } from '../src/lobby/stations.js';
-import { FLIGHT_END, INTRO_END, flightAt, phaseAt, stationRevealAt } from '../src/lobby/timeline.js';
-import { createCamRig, frameCapsule, stationApproach } from '../src/lobby/camRig.js';
+import { FLIGHT_END, INTRO_END, flightAt, phaseAt } from '../src/lobby/timeline.js';
+import { createCamRig, stationApproach } from '../src/lobby/camRig.js';
+import { samplePhotoDepth } from '../src/lobby/photoCapture.js';
 import { BAYS, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
 
 describe('lobby stations', () => {
@@ -19,23 +20,26 @@ describe('lobby stations', () => {
   });
 });
 
-describe('capsule timeline', () => {
-  it('moves the doors outward before sliding and cuts at full flash opacity', () => {
-    expect(phaseAt(1.65).pop).toBeGreaterThan(0);
-    expect(phaseAt(1.65).lid).toBe(0);
-    expect(phaseAt(1.9).pop).toBe(1);
-    expect(phaseAt(1.9).lid).toBeGreaterThan(0);
-    expect(phaseAt(1.9).lid).toBeLessThan(1);
-    expect(phaseAt(2.4).lid).toBe(1);
-    expect(phaseAt(3.49).room).toBe(false);
-    expect(phaseAt(3.5)).toMatchObject({ flash: 1, room: true, pullback: 0, dolly: 1 });
-    expect(phaseAt(3.7).flash).toBe(0);
+describe('photo intro timeline', () => {
+  it('settles the photo, overlaps the dissolve with flight, then reveals the room', () => {
+    expect(phaseAt(0.4).toss).toBeGreaterThan(0);
+    expect(phaseAt(0.84).rebound).toBeGreaterThan(0);
+    expect(phaseAt(1.16).rebound).toBeLessThan(0);
+    const settled = phaseAt(1.3);
+    expect(settled).toMatchObject({ toss: 1, dissolve: 0, orbit: 0, room: 0 });
+    expect(Math.abs(settled.rebound)).toBe(0);
+    expect(phaseAt(2).dissolve).toBeGreaterThan(0);
+    expect(phaseAt(2).orbit).toBe(0);
+    expect(phaseAt(2.3)).toMatchObject({ dissolve: 1, room: 0 });
+    expect(phaseAt(2.3).orbit).toBeGreaterThan(0);
+    expect(phaseAt(4)).toMatchObject({ orbit: 1, room: 0, ready: false });
+    expect(phaseAt(4.4).room).toBeCloseTo(0.5);
   });
 
-  it('advances the clamped channels in order and staggers the station lights', () => {
-    const channels = ['fadeIn', 'seam', 'pop', 'lid', 'burst', 'align', 'dolly', 'pullback', 'reveal'];
+  it('clamps the timeline and signals ready at the end of the handoff', () => {
+    const channels = ['toss', 'glint', 'dissolve', 'orbit', 'room'];
     const first = phaseAt(0), last = phaseAt(INTRO_END);
-    expect(INTRO_END).toBe(4.6);
+    expect(INTRO_END).toBe(4.8);
     expect(phaseAt(-1)).toEqual(first);
     expect(phaseAt(INTRO_END - 0.001).ready).toBe(false);
     expect(last.ready).toBe(true);
@@ -43,18 +47,48 @@ describe('capsule timeline', () => {
     expect(channels.every(key => first[key] === 0 && last[key] === 1)).toBe(true);
 
     let previous = first;
-    for (let i = 1; i <= 46; i++) {
+    for (let i = 1; i <= 48; i++) {
       const next = phaseAt(i / 10);
-      for (const key of channels) expect(next[key]).toBeGreaterThanOrEqual(previous[key]);
-      for (const value of Object.values(next).filter(v => typeof v === 'number')) {
-        expect(value).toBeGreaterThanOrEqual(0);
-        expect(value).toBeLessThanOrEqual(1);
+      for (const key of channels) {
+        expect(next[key]).toBeGreaterThanOrEqual(previous[key]);
+        expect(next[key]).toBeLessThanOrEqual(1);
       }
       previous = next;
     }
-    expect(stationRevealAt(3.8, 0)).toBeGreaterThan(stationRevealAt(3.8, 1));
-    expect(stationRevealAt(3.8, 2)).toBe(0);
-    expect(stationRevealAt(INTRO_END, 3)).toBe(1);
+  });
+});
+
+describe('photo depth samples', () => {
+  it('only samples geometry, unprojects pixel centers, and orders far surfaces first', () => {
+    const camera = new PerspectiveCamera(50, 1.5, 0.1, 30);
+    camera.position.set(2, 1, 5);
+    camera.lookAt(0, 0, -1);
+    camera.updateMatrixWorld();
+    const packed = new Uint8Array(3 * 2 * 4).fill(255);
+    const depth = new DataView(packed.buffer);
+    depth.setUint32(0, 0xe0000000, true);
+    depth.setUint32(5 * 4, 0xf0000000, true);
+
+    const { positions, uvs } = samplePhotoDepth(packed, 3, 2, camera, true);
+    expect(positions).toHaveLength(6);
+    expect(uvs[0]).toBeCloseTo(5 / 6);
+    expect(uvs[1]).toBe(0.75);
+    expect(uvs[2]).toBeCloseTo(1 / 6);
+    expect(uvs[3]).toBe(0.25);
+    for (const [i, z] of [0.875, 0.75].entries()) {
+      const point = new Vector3().fromArray(positions, i * 3).project(camera);
+      expect(point.x).toBeCloseTo(uvs[i * 2] * 2 - 1);
+      expect(point.y).toBeCloseTo(uvs[i * 2 + 1] * 2 - 1);
+      expect(point.z).toBeCloseTo(z);
+    }
+  });
+
+  it('limits the particle counts for each quality level', () => {
+    const width = 400, height = 200;
+    const camera = new PerspectiveCamera(45, width / height);
+    const packed = new Uint8Array(width * height * 4).fill(128);
+    expect(samplePhotoDepth(packed, width, height, camera, true).positions.length / 3).toBe(70000);
+    expect(samplePhotoDepth(packed, width, height, camera, false).positions.length / 3).toBe(35000);
   });
 });
 
@@ -88,13 +122,21 @@ describe('lobby camera', () => {
     }
   });
 
-  it('lines up with the opening before the white cut', () => {
+  it('orbits from the side to exactly the home view before the handoff', () => {
     const camera = new PerspectiveCamera();
-    const capsule = { position: new Vector3(0, 1.32, 0), rotation: { y: 0.175 } };
-    frameCapsule(camera, 1.6, phaseAt(3.5), capsule);
-    expect(camera.fov).toBe(50);
-    expect(camera.position.distanceTo(capsule.position)).toBeCloseTo(1.27);
-    expect(Math.atan2(camera.position.x, camera.position.z)).toBeCloseTo(capsule.rotation.y);
+    const rig = createCamRig(camera);
+    rig.resize(1.6);
+    rig.apply(0);
+    const home = camera.position.clone(), orientation = camera.quaternion.clone();
+    rig.intro(phaseAt(2).orbit);
+    const side = camera.position.x;
+    expect(side).toBeGreaterThan(1);
+    rig.intro(phaseAt(3).orbit);
+    expect(camera.position.x).toBeGreaterThan(0);
+    expect(camera.position.x).toBeLessThan(side);
+    rig.intro(phaseAt(4).orbit);
+    expect(camera.position.distanceTo(home)).toBeCloseTo(0);
+    expect(camera.quaternion.angleTo(orientation)).toBeCloseTo(0);
   });
 
   it('lands 2.2 m in front of the chosen bay and fades only at the end', () => {

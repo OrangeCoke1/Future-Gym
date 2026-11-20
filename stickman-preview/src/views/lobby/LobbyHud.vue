@@ -71,13 +71,6 @@ defineExpose({ positionLabels, reveal });
       </div>
     </header>
     <div
-      v-if="fallback && !ready"
-      class="lobby-capsule"
-      aria-hidden="true"
-    >
-      <i /><i @animationend.self="emit('skip')" />
-    </div>
-    <div
       v-for="station in STATIONS"
       v-show="station.id === active && !fallback"
       :key="station.id"

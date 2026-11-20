@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 
-export const INK = '#2A2F2B';
 export const WALL = '#BEC3AD';
 export const DECK = '#A5AC98';
 export const GLOW = '#FFF4E2';

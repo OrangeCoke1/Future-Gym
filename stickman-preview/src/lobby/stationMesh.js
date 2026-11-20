@@ -38,11 +38,11 @@ export function buildStation(station, { detailed, materials, shadow, textures })
   let level = 0;
   return {
     group, collider, anchor,
-    update(dt, reveal, hovered, focus, reduced) {
+    update(dt, hovered, focus, reduced) {
       const goal = Number(hovered);
       level = reduced ? goal : level + THREE.MathUtils.clamp(goal - level, -dt / 0.25, dt / 0.25);
       const eased = level * level * (3 - 2 * level);
-      signal.color.copy(ivory).lerp(terracotta, eased).multiplyScalar(0.48 + reveal + eased * 2.45 + focus);
+      signal.color.copy(ivory).lerp(terracotta, eased).multiplyScalar(1.48 + eased * 2.45 + focus);
       if (!reduced) props?.update(dt);
     },
   };
