@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../layout.js';
 import { ACCENT, GLOW, color, lightMaterial, surface } from '../materials.js';
-import { lobbyRandom } from '../textures.js';
 import { createCoach } from './coach.js';
-import { createPropBatch, lathe, roundBox, roundedBorder, roundedPane } from './geometry.js';
+import { beveledPanel, chamferedShape, createPropBatch, lathe, roundBox, roundedBorder, roundedPane } from './geometry.js';
 
 function addFitnessPanel(scene, { textures, materials, detailed }) {
   const panel = new THREE.Group();
@@ -15,8 +14,15 @@ function addFitnessPanel(scene, { textures, materials, detailed }) {
   batch.add(roundedPane(2.71, 1.311, 0.181, detailed), materials.graphite, [0, 0, 0.090]);
   batch.add(roundedBorder(2.668, 1.271, 0.157, 0.012, detailed), materials.aluminum, [0, 0, 0.097]);
   batch.add(roundedPane(2.649, 1.254, 0.147, detailed), new THREE.MeshBasicMaterial({
-    map: textures.fitness(), color: color('#F1F0E2').multiplyScalar(1.25),
+    map: textures.fitness(), color: color('#EAF2FF').multiplyScalar(1.25),
   }), [0, 0, 0.098]);
+  const guard = surface(ACCENT, { roughness: 0.36, metalness: 0.18 });
+  for (const side of [-1, 1]) {
+    for (const vertical of [-1, 1]) {
+      batch.add(beveledPanel(chamferedShape(0.20, 0.105, 0.028), 0.042, 0.012),
+        guard, [side * 1.287, vertical * 0.587, 0.105], [0, 0, -side * vertical * Math.PI / 4]);
+    }
+  }
   batch.finish();
 
   const outline = new THREE.Mesh(new THREE.PlaneGeometry(1.105, 1.052), lightMaterial(GLOW, 1.46, {
@@ -29,7 +35,7 @@ function addFitnessPanel(scene, { textures, materials, detailed }) {
 }
 
 function addPlaques(scene, batch, { textures, materials, detailed }) {
-  const plaqueMaterial = surface('#2F3B35', { roughness: 0.36, envMapIntensity: 0.64 });
+  const plaqueMaterial = surface('#27354B', { roughness: 0.36, envMapIntensity: 0.64 });
   const ivory = color(GLOW), terracotta = color(ACCENT);
   const shell = roundBox(0.667, 0.438, 0.085, detailed, 0.040);
   const faceGeometry = roundedPane(0.632, 0.403, 0.111, detailed);
@@ -75,7 +81,7 @@ function addPlaques(scene, batch, { textures, materials, detailed }) {
 
 function addStorage(batch, { materials, lamp, detailed }) {
   const { housing, padding } = materials;
-  const towel = surface('#DCDAC8', { roughness: 0.9 });
+  const towel = surface('#D7E0EF', { roughness: 0.9 });
   batch.box(housing, [0.93, 0.72, 0.18], [1.302, 0.40, -4.284], 0.074);
   batch.add(roundedPane(0.86, 0.665, 0.13, detailed), padding, [1.302, 0.40, -4.19]);
   batch.box(housing, [0.88, 0.046, 0.25], [1.302, 0.381, -4.085], 0.021);
@@ -109,69 +115,6 @@ function addStorage(batch, { materials, lamp, detailed }) {
     [-2.902, 1.48, 1.815]], 0.032);
 }
 
-function addPlants(scene, batch, materials, detailed) {
-  const pots = [
-    { x: -2.787, y: 2.778, z: 0.76, radius: 0.141, trails: 3 },
-    { x: -2.805, y: 2.778, z: 0.13, radius: 0.129, trails: 2 },
-    { x: -2.714, y: 1.196, z: -2.415, radius: 0.091, trails: 2 },
-    { x: -2.714, y: 1.706, z: -2.545, radius: 0.071, trails: 1 },
-  ];
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute('position', new THREE.Float32BufferAttribute([
-    0, 0, 0, -0.22, 0.33, 0.018, -0.29, 0.59, 0.042, 0, 1, -0.083,
-    0.26, 0.61, 0.02, 0.19, 0.34, 0.017, 0, 0.51, 0.142,
-  ], 3));
-  geom.setIndex([0, 1, 6, 1, 2, 6, 2, 3, 6, 3, 4, 6, 4, 5, 6, 5, 0, 6]);
-  geom.computeVertexNormals();
-  const greens = ['#527035', '#63833F', '#789646', '#435A35', '#6D843E'].map(color);
-  const random = lobbyRandom(162);
-  const stems = surface('#5A713B', { roughness: 0.79 });
-  const leaves = new THREE.InstancedMesh(geom, surface('#FFFFFF', { side: THREE.DoubleSide, roughness: 0.69 }),
-    pots.reduce((count, pot) => count + pot.trails * 14, 0));
-  const transform = new THREE.Object3D();
-  let index = 0;
-
-  for (const { x, y, z, radius, trails } of pots) {
-    const tall = radius * 1.1;
-    batch.add(lathe([[0, 0], [radius * 0.71, 0], [radius * 0.83, tall * 0.15], [radius, tall], [radius * 0.91, tall]],
-      detailed ? 24 : 14), materials.housing, [x, y, z]);
-    batch.cylinder(materials.rubber, radius * 0.90, 0.016, [x, y + tall - 0.012, z]);
-
-    for (let j = 0; j < trails; j++) {
-      const angle = j * 2.4 + 0.31;
-      const base = [x + Math.cos(angle) * radius * 0.38, y + tall, z + Math.sin(angle) * radius * 0.42];
-      const overhang = y > 2;
-      const spread = 0.22 + random() * 0.09;
-      const tip = overhang ? [x + spread, y - 0.32 - random() * 0.42, z + Math.sin(angle) * 0.25]
-        : [x + Math.cos(angle) * 0.15, y + 0.22 + random() * 0.09, z + Math.sin(angle) * 0.18];
-      const curve = new THREE.CatmullRomCurve3([base,
-        [base[0] + (overhang ? 0.08 : 0.04), base[1] + 0.13, base[2] + Math.sin(angle) * 0.108],
-        [(base[0] + tip[0]) / 2 + 0.066, (base[1] + tip[1]) / 2, (base[2] + tip[2]) / 2],
-        tip,
-      ].map(point => new THREE.Vector3(...point)));
-      batch.add(new THREE.TubeGeometry(curve, 16, 0.0045, 5), stems, [0, 0, 0]);
-
-      for (let i = 0; i < 7; i++) {
-        const t = (i + 0.6) / 7.4;
-        const point = curve.getPoint(t);
-        for (const side of [-1, 1]) {
-          const scale = (overhang ? 0.166 : 0.127) * (1 - t * 0.48) * (0.8 + random() * 0.46);
-          transform.position.copy(point);
-          transform.rotation.set(0.35 + random() * 1.04, random() * 1.72 + 0.45,
-            side * (0.82 + random() * 0.82) + (overhang && i > 1 ? Math.PI : 0));
-          transform.scale.set(scale, scale, scale);
-          transform.updateMatrix();
-          leaves.setMatrixAt(index, transform.matrix);
-          leaves.setColorAt(index, greens[Math.floor(random() * greens.length)]);
-          index++;
-        }
-      }
-    }
-  }
-  leaves.receiveShadow = true;
-  scene.add(leaves);
-}
-
 function addPurifier(batch, { textures, materials, lamp, detailed }) {
   const center = [2.687, 0.002, 1.438];
   const segments = detailed ? 40 : 24;
@@ -189,10 +132,9 @@ function addPurifier(batch, { textures, materials, lamp, detailed }) {
 }
 
 export function buildWallFixtures(scene, options) {
-  const { detailed, materials } = options;
+  const { detailed } = options;
   const batch = createPropBatch(scene, detailed);
   addStorage(batch, options);
-  addPlants(scene, batch, materials, detailed);
   addPurifier(batch, options);
   const menu = addPlaques(scene, batch, options);
   batch.finish();

@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { ACT } from '../src/core/actions.js';
 import { STATIONS } from '../src/lobby/stations.js';
-import { FLIGHT_END, INTRO_END, flightAt, phaseAt } from '../src/lobby/timeline.js';
+import { FLIGHT_END, HATCH_CROSS, INTRO_END, SPLAT_LAND, flightAt, phaseAt } from '../src/lobby/timeline.js';
 import { createCamRig, stationApproach } from '../src/lobby/camRig.js';
 import { samplePhotoDepth } from '../src/lobby/photoCapture.js';
-import { BAYS, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
+import { BAYS, HATCH, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
 
 describe('lobby stations', () => {
   it('uses unique IDs and real training actions', () => {
@@ -20,26 +20,22 @@ describe('lobby stations', () => {
   });
 });
 
-describe('photo intro timeline', () => {
-  it('settles the photo, overlaps the dissolve with flight, then reveals the room', () => {
-    expect(phaseAt(0.4).toss).toBeGreaterThan(0);
-    expect(phaseAt(0.84).rebound).toBeGreaterThan(0);
-    expect(phaseAt(1.16).rebound).toBeLessThan(0);
-    const settled = phaseAt(1.3);
-    expect(settled).toMatchObject({ toss: 1, dissolve: 0, orbit: 0, room: 0 });
-    expect(Math.abs(settled.rebound)).toBe(0);
-    expect(phaseAt(2).dissolve).toBeGreaterThan(0);
-    expect(phaseAt(2).orbit).toBe(0);
-    expect(phaseAt(2.3)).toMatchObject({ dissolve: 1, room: 0 });
-    expect(phaseAt(2.3).orbit).toBeGreaterThan(0);
-    expect(phaseAt(4)).toMatchObject({ orbit: 1, room: 0, ready: false });
-    expect(phaseAt(4.4).room).toBeCloseTo(0.5);
+describe('capsule to particle timeline', () => {
+  it('unlocks before sliding the hatch and assembles the room after crossing', () => {
+    expect(phaseAt(0.8).unlock).toBeGreaterThan(0);
+    expect(phaseAt(0.8)).toMatchObject({ doors: 0, entered: false });
+    expect(phaseAt(1.7).doors).toBeGreaterThan(0);
+    expect(phaseAt(1.7)).toMatchObject({ unlock: 1, approach: 0, entered: false });
+    expect(phaseAt(HATCH_CROSS - 0.01)).toMatchObject({ doors: 1, entered: false, room: 0 });
+    expect(phaseAt(HATCH_CROSS)).toMatchObject({ approach: 1, entered: true, advance: 0, room: 0 });
+    expect(phaseAt(HATCH_CROSS + 0.3)).toMatchObject({ doorwayFade: 1, entered: true, room: 0 });
+    expect(phaseAt(SPLAT_LAND)).toMatchObject({ advance: 1, room: 0, ready: false });
+    expect(phaseAt((SPLAT_LAND + INTRO_END) / 2).room).toBeGreaterThan(0);
   });
 
   it('clamps the timeline and signals ready at the end of the handoff', () => {
-    const channels = ['toss', 'glint', 'dissolve', 'orbit', 'room'];
+    const channels = ['unlock', 'doors', 'approach', 'doorwayFade', 'advance', 'room'];
     const first = phaseAt(0), last = phaseAt(INTRO_END);
-    expect(INTRO_END).toBe(4.8);
     expect(phaseAt(-1)).toEqual(first);
     expect(phaseAt(INTRO_END - 0.001).ready).toBe(false);
     expect(last.ready).toBe(true);
@@ -47,7 +43,7 @@ describe('photo intro timeline', () => {
     expect(channels.every(key => first[key] === 0 && last[key] === 1)).toBe(true);
 
     let previous = first;
-    for (let i = 1; i <= 48; i++) {
+    for (let i = 1; i <= 55; i++) {
       const next = phaseAt(i / 10);
       for (const key of channels) {
         expect(next[key]).toBeGreaterThanOrEqual(previous[key]);
@@ -122,21 +118,29 @@ describe('lobby camera', () => {
     }
   });
 
-  it('orbits from the side to exactly the home view before the handoff', () => {
-    const camera = new PerspectiveCamera();
-    const rig = createCamRig(camera);
-    rig.resize(1.6);
-    rig.apply(0);
-    const home = camera.position.clone(), orientation = camera.quaternion.clone();
-    rig.intro(phaseAt(2).orbit);
-    const side = camera.position.x;
-    expect(side).toBeGreaterThan(1);
-    rig.intro(phaseAt(3).orbit);
-    expect(camera.position.x).toBeGreaterThan(0);
-    expect(camera.position.x).toBeLessThan(side);
-    rig.intro(phaseAt(4).orbit);
-    expect(camera.position.distanceTo(home)).toBeCloseTo(0);
-    expect(camera.quaternion.angleTo(orientation)).toBeCloseTo(0);
+  it('moves through the physical hatch and arrives at the exact home framing', () => {
+    for (const aspect of [1.6, 390 / 844]) {
+      const camera = new PerspectiveCamera();
+      const rig = createCamRig(camera);
+      rig.resize(aspect);
+      rig.apply(0);
+      const home = camera.position.clone(), orientation = camera.quaternion.clone(), fov = camera.fov;
+      rig.intro(phaseAt(0));
+      expect(camera.position.z).toBeGreaterThan(HATCH.z + 3);
+      expect(camera.position.x).toBeGreaterThan(1);
+      rig.intro(phaseAt(HATCH_CROSS - 0.001));
+      const threshold = camera.position.clone();
+      rig.intro(phaseAt(HATCH_CROSS));
+      expect(camera.position.z).toBeLessThan(HATCH.z);
+      expect(camera.position.distanceTo(threshold)).toBeLessThan(0.02);
+      expect(Math.abs(camera.position.x)).toBeLessThan(HATCH.radius);
+      rig.intro(phaseAt((HATCH_CROSS + SPLAT_LAND) / 2));
+      expect(camera.position.x).toBeLessThan(-0.5);
+      rig.intro(phaseAt(SPLAT_LAND));
+      expect(camera.position.distanceTo(home)).toBeCloseTo(0);
+      expect(camera.quaternion.angleTo(orientation)).toBeCloseTo(0);
+      expect(camera.fov).toBe(fov);
+    }
   });
 
   it('lands 2.2 m in front of the chosen bay and fades only at the end', () => {

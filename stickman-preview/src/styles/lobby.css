@@ -1,8 +1,15 @@
 .lobby {
+  --paper: #E8EDF6;
+  --bg: #D5DEEC;
+  --line2: #A5B1C4;
+  --ink: #192638;
+  --muted: #465770;
+  --ivory: #F1F6FF;
+  --acc: #CB4D39;
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #06080A;
+  background: #0E1624;
   color: var(--ivory);
   isolation: isolate;
 }
@@ -22,7 +29,7 @@
   --edge: clamp(14px, 2.45vw, 36px);
   --title-ink: var(--ivory);
   --title-detail: var(--ivory);
-  --title-surface: rgb(10 14 14 / 86%);
+  --title-surface: rgb(10 17 29 / 86%);
   position: absolute;
   inset: 0;
   pointer-events: none;

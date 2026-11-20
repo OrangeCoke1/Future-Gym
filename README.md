@@ -34,7 +34,7 @@ npm test         # 跑单元测试（改了计数、模拟数据等纯逻辑后�
 | 动作、计数规则 | `core/actions.js` |
 | 心率、肌群等模拟数据的算法 | `sim/` |
 | 摄像头识别规则（摄像头组提供，需要和他们同步） | `pose/fit.js` |
-| 照片粒子开场、大厅与器械 | `lobby/`、`views/LobbyView.vue` |
+| 胶囊、粒子开场与大厅器械 | `lobby/`、`views/LobbyView.vue` |
 | 3D 小人的绘制 | `render/` |
 | 卡片上的小图表 | `charts/` |
 | 每帧的主流程（把上面这些串起来） | `engine/engine.js` |

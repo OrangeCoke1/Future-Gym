@@ -1,8 +1,6 @@
-export const PHOTO_SETTLE = 1.3;
-export const PHOTO_DISSOLVED = 2.3;
-export const SPLAT_FLIGHT_START = 2;
-export const SPLAT_LAND = 4;
-export const INTRO_END = 4.8;
+export const HATCH_CROSS = 2.95;
+export const SPLAT_LAND = 4.7;
+export const INTRO_END = 5.35;
 export const FLIGHT_END = 0.9;
 
 function progress(t, start, end) { return Math.min(1, Math.max(0, (t - start) / (end - start))); }
@@ -15,14 +13,15 @@ function easeOutCubic(p) { return 1 - (1 - p) ** 3; }
 
 /** @param {number} t Elapsed seconds of the intro. */
 export function phaseAt(t) {
-  const settle = progress(t, 0.68, PHOTO_SETTLE);
   return {
-    toss: easeOutCubic(progress(t, 0, 1.04)),
-    rebound: Math.sin(settle * Math.PI * 2) * settle * (1 - settle),
-    glint: progress(t, 0.69, PHOTO_SETTLE + 0.09),
-    dissolve: progress(t, PHOTO_SETTLE, PHOTO_DISSOLVED),
-    orbit: easeInOutCubic(progress(t, SPLAT_FLIGHT_START, SPLAT_LAND)),
-    room: easeInOutCubic(progress(t, SPLAT_LAND, INTRO_END)),
+    unlock: easeOutCubic(progress(t, 0.48, 1.16)),
+    doors: easeInOutCubic(progress(t, 1.16, 2.08)),
+    approach: progress(t, 1.84, HATCH_CROSS) ** 2,
+    entered: t >= HATCH_CROSS,
+    doorwayFade: easeInOutCubic(progress(t, HATCH_CROSS, HATCH_CROSS + 0.23)),
+    advance: easeOutCubic(progress(t, HATCH_CROSS, SPLAT_LAND)),
+    orbit: Math.sin(Math.PI * progress(t, HATCH_CROSS, SPLAT_LAND)) ** 2,
+    room: easeOutCubic(progress(t, SPLAT_LAND, INTRO_END)),
     ready: t >= INTRO_END,
   };
 }

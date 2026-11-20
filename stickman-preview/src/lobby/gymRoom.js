@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { DECK, GLOW, WALL, color, lightMaterial, surface } from './materials.js';
+import { ACCENT, DECK, GLOW, WALL, color, lightMaterial, surface } from './materials.js';
 import { ROOM } from './layout.js';
 import { buildWallFixtures } from './props/wallFixtures.js';
-import { createPropBatch, lathe, roundBox, roundedBorder, roundedPane } from './props/geometry.js';
+import { beveledPanel, chamferedShape, createPropBatch, lathe, roundBox, roundedBorder, roundedPane } from './props/geometry.js';
 
 function cabinShell(detailed) {
   const { halfWidth: w, height: h, back, front } = ROOM;
@@ -33,22 +33,64 @@ function cabinShell(detailed) {
   return geometry;
 }
 
-function addWindow(scene, textures, materials, detailed) {
+function skylineMaterial(map, center) {
+  const material = new THREE.MeshBasicMaterial({ map, color: color('#F0F6FF').multiplyScalar(1.13) });
+  material.onBeforeCompile = shader => {
+    shader.uniforms.uWindowCenter = { value: center };
+    shader.fragmentShader = 'uniform vec3 uWindowCenter;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
+      vec3 sightline = uWindowCenter - cameraPosition;
+      vec2 angle = sightline.xy / max(-sightline.z, 2.0);
+      // Overscan lets the window reveal more of the city without stretching its buildings.
+      vec2 shift = clamp(angle * vec2(0.31, 0.37), vec2(-0.066), vec2(0.066));
+      vec2 viewUv = 0.5 + (vUv - 0.5) * vec2(0.86, 0.85) + shift;
+      diffuseColor *= texture2D(map, viewUv);
+    `);
+  };
+  return material;
+}
+
+function addWindow(scene, textures, materials, guard, detailed) {
   const group = new THREE.Group();
   group.name = 'city-window';
-  group.position.set(0.44, 2.205, ROOM.back + 0.058);
+  group.position.set(0.33, 2.11, ROOM.back + 0.058);
   const batch = createPropBatch(group, detailed);
 
-  batch.box(materials.housing, [4.24, 2.11, 0.167], [0, 0, 0], 0.078);
-  batch.add(roundedBorder(4.15, 2.023, 0.30, 0.082, detailed), materials.aluminum, [0, 0, 0.191]);
-  batch.add(roundedBorder(4.050, 1.957, 0.261, 0.049, detailed), materials.graphite, [0, 0, 0.164]);
-  batch.add(roundedBorder(3.957, 1.87, 0.227, 0.009, detailed), materials.chrome, [0, 0, 0.153]);
-  batch.add(roundedPane(3.945, 1.857, 0.223, detailed), new THREE.MeshBasicMaterial({
-    map: textures.city(), color: color('#ECF3F2').multiplyScalar(1.26),
-  }), [0, 0, 0.148]);
+  batch.add(beveledPanel(chamferedShape(4.78, 2.30, 0.22), 0.174, 0.028), materials.housing, [0, 0, 0]);
+  batch.add(roundedBorder(4.64, 2.171, 0.247, 0.051, detailed), materials.graphite, [0, 0, 0.153]);
+  batch.add(roundedBorder(4.54, 2.071, 0.196, 0.021, detailed), materials.chrome, [0, 0, 0.158]);
+  const paneCenter = group.position.clone();
+  paneCenter.z += 0.145;
+  batch.add(roundedPane(4.509, 2.039, 0.174, detailed),
+    skylineMaterial(textures.city(), paneCenter), [0, 0, 0.145]);
+  for (const side of [-1, 1]) {
+    for (const vertical of [-1, 1]) {
+      batch.add(beveledPanel(chamferedShape(0.36, 0.135, 0.045), 0.056, 0.012),
+        guard, [side * 2.283, vertical * 1.021, 0.13], [0, 0, -side * vertical * Math.PI / 4]);
+    }
+  }
 
   batch.finish();
   scene.add(group);
+}
+
+function addArmor(scene, textures, materials, guard, detailed) {
+  const batch = createPropBatch(scene, detailed);
+  for (const side of [-1, 1]) {
+    const x = side * 2.9;
+    batch.box(materials.graphite, [0.123, 2.92, 0.119], [x, 1.55, ROOM.back + 0.10], 0.019);
+    for (const y of [0.19, 2.92]) {
+      batch.box(guard, [0.183, 0.17, 0.143], [x, y, ROOM.back + 0.15], 0.023);
+    }
+    batch.box(materials.graphite, [0.093, 0.14, ROOM.front - ROOM.back - 0.24],
+      [side * 2.995, 0.088, (ROOM.front + ROOM.back) / 2], 0.023);
+  }
+  batch.add(beveledPanel(chamferedShape(1.18, 0.141, 0.035), 0.054, 0.010),
+    materials.housing, [0.33, 3.355, ROOM.back + 0.12]);
+  const wordmark = new THREE.MeshBasicMaterial({
+    map: textures.wordmark(), transparent: true, depthWrite: false, toneMapped: false,
+  });
+  batch.add(new THREE.PlaneGeometry(1.07, 0.44), wordmark, [0.33, 3.355, ROOM.back + 0.162]);
+  batch.finish();
 }
 
 function addLightingSlots(scene, textures, materials, lamp, detailed) {
@@ -102,9 +144,9 @@ function addLightingSlots(scene, textures, materials, lamp, detailed) {
 }
 
 function addRoomLights(scene) {
-  const bounce = new THREE.HemisphereLight(color('#FAF7E9'), color('#899584'), 1.42);
-  const ambient = new THREE.AmbientLight(color('#E7EBE3'), 0.86);
-  const key = new THREE.DirectionalLight(color('#FFF3E3'), 1.76);
+  const bounce = new THREE.HemisphereLight(color('#EDF5FF'), color('#7488A7'), 1.38);
+  const ambient = new THREE.AmbientLight(color('#E3EAF4'), 0.88);
+  const key = new THREE.DirectionalLight(color('#F5F7FF'), 1.76);
   key.position.set(-1.7, 6, 3.3);
   key.target.position.set(0, 0, -1.2);
   key.castShadow = true;
@@ -143,7 +185,9 @@ export function buildGymRoom(scene, textures, materials, detailed) {
   scene.add(shell, bulkhead, floor);
 
   const lamp = lightMaterial(GLOW, 2.55);
-  addWindow(scene, textures, materials, detailed);
+  const guard = surface(ACCENT, { roughness: 0.36, metalness: 0.18 });
+  addWindow(scene, textures, materials, guard, detailed);
+  addArmor(scene, textures, materials, guard, detailed);
   addLightingSlots(scene, textures, materials, lamp, detailed);
   const { coach, menu } = buildWallFixtures(scene, { textures, materials, lamp, detailed });
   return { key: addRoomLights(scene), coach, menu };

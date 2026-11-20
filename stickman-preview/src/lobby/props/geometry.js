@@ -10,6 +10,22 @@ export function roundBox(w, h, d, detailed, radius = Math.min(w, h, d) * 0.2) {
   return new RoundedBoxGeometry(w, h, d, detailed ? 3 : 2, radius);
 }
 
+export function chamferedShape(width, height, corner) {
+  const x = width / 2, y = height / 2;
+  const shape = new THREE.Shape();
+  shape.moveTo(-x + corner, -y);
+  for (const [px, py] of [[x - corner, -y], [x, -y + corner], [x, y - corner], [x - corner, y],
+    [-x + corner, y], [-x, y - corner], [-x, -y + corner]]) shape.lineTo(px, py);
+  shape.closePath();
+  return shape;
+}
+
+export function beveledPanel(shape, depth, bevel) {
+  return new THREE.ExtrudeGeometry(shape, {
+    depth, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, steps: 1,
+  }).translate(0, 0, -depth / 2);
+}
+
 export function createPropBatch(group, detailed) {
   const groups = new Map();
   const transform = new THREE.Object3D();
