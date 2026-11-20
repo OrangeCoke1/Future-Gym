@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FLIGHT_END, INTRO_END, flightAt, phaseAt } from './timeline.js';
 import { createCamRig } from './camRig.js';
 import { buildCapsule } from './capsule.js';
+import { CITY_FAR } from './cityScene.js';
 import { buildGymRoom } from './gymRoom.js';
 import { createEquipmentMaterials } from './materials.js';
 import { createParticleIntro } from './particleIntro.js';
@@ -47,7 +48,7 @@ export function createLobby({
   const scene = new THREE.Scene();
   scene.environment = environment?.texture ?? null;
   const { key, coach, menu } = buildGymRoom(scene, textures, materials, detailed);
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 45);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.05, CITY_FAR);
   const rig = createCamRig(camera);
   const stations = STATIONS.map(station => buildStation(station, { detailed, materials, shadow, textures }));
   scene.add(...stations.map(s => s.group));
@@ -174,7 +175,8 @@ export function createLobby({
       revealRoom();
       return false;
     }
-    if (!captured && (textures.cityReady() || phase.entered)) {
+    // Draw the capsule before the one-time room readback and its shader compilation.
+    if (!captured && introTime >= 0.35) {
       captured = true;
       rig.apply(0);
       updateEquipment(0);

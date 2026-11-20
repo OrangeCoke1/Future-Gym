@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { buildCity } from './cityScene.js';
 import { ACCENT, DECK, GLOW, WALL, color, lightMaterial, surface } from './materials.js';
-import { ROOM } from './layout.js';
+import { ROOM, WINDOW } from './layout.js';
 import { buildWallFixtures } from './props/wallFixtures.js';
-import { beveledPanel, chamferedShape, createPropBatch, lathe, roundBox, roundedBorder, roundedPane } from './props/geometry.js';
+import { beveledPanel, chamferedShape, createPropBatch, lathe, roundedBorder, roundedShape } from './props/geometry.js';
 
 function cabinShell(detailed) {
   const { halfWidth: w, height: h, back, front } = ROOM;
@@ -33,35 +34,24 @@ function cabinShell(detailed) {
   return geometry;
 }
 
-function skylineMaterial(map, center) {
-  const material = new THREE.MeshBasicMaterial({ map, color: color('#F0F6FF').multiplyScalar(1.13) });
-  material.onBeforeCompile = shader => {
-    shader.uniforms.uWindowCenter = { value: center };
-    shader.fragmentShader = 'uniform vec3 uWindowCenter;\n' + shader.fragmentShader.replace('#include <map_fragment>', `
-      vec3 sightline = uWindowCenter - cameraPosition;
-      vec2 angle = sightline.xy / max(-sightline.z, 2.0);
-      // Overscan lets the window reveal more of the city without stretching its buildings.
-      vec2 shift = clamp(angle * vec2(0.31, 0.37), vec2(-0.066), vec2(0.066));
-      vec2 viewUv = 0.5 + (vUv - 0.5) * vec2(0.86, 0.85) + shift;
-      diffuseColor *= texture2D(map, viewUv);
-    `);
-  };
-  return material;
+function cutWindow(shape, x, y, margin, depth, bevel) {
+  const { width, height, radius } = WINDOW;
+  const hole = roundedShape(width + margin, height + margin, radius + margin / 2);
+  const offset = new THREE.Vector2(x, y);
+  shape.holes.push(new THREE.Path(hole.getPoints(10).map(point => point.add(offset))));
+  return beveledPanel(shape, depth, bevel);
 }
 
-function addWindow(scene, textures, materials, guard, detailed) {
+function addWindow(scene, materials, guard, detailed) {
   const group = new THREE.Group();
   group.name = 'city-window';
-  group.position.set(0.33, 2.11, ROOM.back + 0.058);
+  group.position.set(WINDOW.x, WINDOW.y, ROOM.back + 0.058);
   const batch = createPropBatch(group, detailed);
 
-  batch.add(beveledPanel(chamferedShape(4.78, 2.30, 0.22), 0.174, 0.028), materials.housing, [0, 0, 0]);
+  batch.add(cutWindow(chamferedShape(4.78, 2.30, 0.22), 0, 0, 0.02, 0.174, 0.021),
+    materials.housing, [0, 0, 0]);
   batch.add(roundedBorder(4.64, 2.171, 0.247, 0.051, detailed), materials.graphite, [0, 0, 0.153]);
   batch.add(roundedBorder(4.54, 2.071, 0.196, 0.021, detailed), materials.chrome, [0, 0, 0.158]);
-  const paneCenter = group.position.clone();
-  paneCenter.z += 0.145;
-  batch.add(roundedPane(4.509, 2.039, 0.174, detailed),
-    skylineMaterial(textures.city(), paneCenter), [0, 0, 0.145]);
   for (const side of [-1, 1]) {
     for (const vertical of [-1, 1]) {
       batch.add(beveledPanel(chamferedShape(0.36, 0.135, 0.045), 0.056, 0.012),
@@ -173,7 +163,11 @@ export function buildGymRoom(scene, textures, materials, detailed) {
   const shell = new THREE.Mesh(cabinShell(detailed), wall);
   // The shell lights are inside the room, so only interior objects cast shadows.
   shell.receiveShadow = true;
-  const bulkhead = new THREE.Mesh(roundBox(halfWidth * 2, height, 0.13, detailed, 0.062), wall);
+  const bulkheadGeometry = cutWindow(roundedShape(halfWidth * 2, height, 0.061),
+    WINDOW.x, WINDOW.y - height / 2, 0.10, 0.13, 0.008);
+  const { uv, position } = bulkheadGeometry.attributes;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, position.getX(i) / (2 * halfWidth) + 0.5, position.getY(i) / height + 0.5);
+  const bulkhead = new THREE.Mesh(bulkheadGeometry, wall);
   bulkhead.position.set(0, height / 2, back - 0.065);
   bulkhead.receiveShadow = true;
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(halfWidth * 2, front - back), surface(DECK, {
@@ -182,11 +176,11 @@ export function buildGymRoom(scene, textures, materials, detailed) {
   floor.rotation.x = -Math.PI / 2;
   floor.position.z = (back + front) / 2;
   floor.receiveShadow = true;
-  scene.add(shell, bulkhead, floor);
+  scene.add(shell, bulkhead, floor, buildCity(detailed));
 
   const lamp = lightMaterial(GLOW, 2.55);
   const guard = surface(ACCENT, { roughness: 0.36, metalness: 0.18 });
-  addWindow(scene, textures, materials, guard, detailed);
+  addWindow(scene, materials, guard, detailed);
   addArmor(scene, textures, materials, guard, detailed);
   addLightingSlots(scene, textures, materials, lamp, detailed);
   const { coach, menu } = buildWallFixtures(scene, { textures, materials, lamp, detailed });

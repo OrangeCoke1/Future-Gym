@@ -1,4 +1,4 @@
-import { CanvasTexture, LinearEncoding, LinearFilter, RepeatWrapping, sRGBEncoding } from 'three';
+import { CanvasTexture, LinearEncoding, RepeatWrapping, sRGBEncoding } from 'three';
 import { paintCoachOutline, paintFitnessPanel, paintGrille, paintIcon } from './displayTextures.js';
 import { ACCENT, NAVY } from './materials.js';
 
@@ -157,7 +157,6 @@ function rollerTexture(ctx, size) {
 export function createLobbyTextures(detailed) {
   const maps = new Map();
   const limit = detailed ? 1024 : 512;
-  let skyline, cityReady = false;
   function get(key, size, paint, linear = false) {
     if (maps.has(key)) return maps.get(key);
     const canvas = document.createElement('canvas');
@@ -166,29 +165,6 @@ export function createLobbyTextures(detailed) {
     const map = new CanvasTexture(canvas);
     map.encoding = linear ? LinearEncoding : sRGBEncoding;
     maps.set(key, map);
-    return map;
-  }
-
-  function city() {
-    const map = get('city', 32, (ctx, size) => {
-      const sky = ctx.createLinearGradient(0, 0, 0, size);
-      sky.addColorStop(0, '#8DA9C6');
-      sky.addColorStop(1, '#526880');
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, size, size);
-    });
-    if (!skyline) {
-      map.minFilter = LinearFilter;
-      map.generateMipmaps = false;
-      skyline = new Image();
-      skyline.onload = () => {
-        map.image = skyline;
-        map.needsUpdate = true;
-        cityReady = true;
-      };
-      skyline.onerror = () => { cityReady = true; };
-      skyline.src = `${import.meta.env.BASE_URL}models/lobby-skyline.webp`;
-    }
     return map;
   }
 
@@ -216,8 +192,6 @@ export function createLobbyTextures(detailed) {
     knurl: () => get('knurl', 128, knurlTexture, true),
     grain: () => get('grain', 256, grainTexture, true),
     roller: () => get('roller', 256, rollerTexture, true),
-    city,
-    cityReady: () => cityReady,
     wordmark: () => get('wordmark', 512, (ctx, size) => {
       ctx.fillStyle = NAVY;
       ctx.textAlign = 'center';
@@ -230,7 +204,6 @@ export function createLobbyTextures(detailed) {
     icon: id => get(`icon-${id}`, 128, (ctx, size) => paintIcon(ctx, size, id)),
     grille: () => get('grille', 256, paintGrille),
     dispose() {
-      if (skyline) skyline.onload = skyline.onerror = null;
       for (const map of maps.values()) map.dispose();
       maps.clear();
     },
