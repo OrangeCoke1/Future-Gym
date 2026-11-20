@@ -12,6 +12,12 @@ export function supportsHdr(renderer) {
     : renderer.extensions.has('OES_texture_half_float') && renderer.extensions.has('EXT_color_buffer_half_float');
 }
 
+export function roomPixelRatio(width, height, displayRatio, reducedResolution = false) {
+  // Bound the multisampled HDR target independently of the monitor's resolution.
+  const pixelBudget = reducedResolution ? 1_280_000 : 2_250_000;
+  return Math.min(displayRatio, 1.5, Math.sqrt(pixelBudget / (width * height)));
+}
+
 export function createEnvironment(renderer) {
   if (!supportsHdr(renderer)) return null;
   const source = new RoomEnvironment();
@@ -62,22 +68,21 @@ export function createBloom(renderer, scene, camera) {
     type: THREE.HalfFloatType,
   });
   const composer = new EffectComposer(renderer, target);
+  const size = new THREE.Vector2();
   // The render and bloom passes share the read buffer. The last pass draws directly to the canvas.
   composer.writeBuffer.samples = 0;
   composer.writeBuffer.depthBuffer = false;
   const room = new RenderPass(scene, camera);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.55, 0.86);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.16, 0.34, 1.06);
   const output = new FilmOutput();
   composer.addPass(room);
   composer.addPass(bloom);
   composer.addPass(output);
 
   return {
-    resize(w, h) {
-      // Four HDR samples per shaded pixel make an uncapped Retina target expensive.
-      const ratio = Math.min(renderer.getPixelRatio(), Math.sqrt(1_280_000 / (w * h)));
-      composer.setPixelRatio(ratio);
-      composer.setSize(w, h);
+    resize() {
+      renderer.getDrawingBufferSize(size);
+      composer.setSize(size.x, size.y);
     },
     render(world, view, dt) {
       room.scene = world;

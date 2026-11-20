@@ -6,7 +6,23 @@ import { FLIGHT_END, HATCH_CROSS, INTRO_END, SPLAT_LAND, flightAt, phaseAt } fro
 import { createCamRig, stationApproach } from '../src/lobby/camRig.js';
 import { buildCity, CITY_FAR } from '../src/lobby/cityScene.js';
 import { samplePhotoDepth } from '../src/lobby/photoCapture.js';
+import { roomPixelRatio } from '../src/lobby/post.js';
 import { BAYS, HATCH, ROOM, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
+
+describe('lobby render resolution', () => {
+  it('uses 1.5x on a Retina viewport and honours the display and pixel budget', () => {
+    expect(roomPixelRatio(1325, 734, 2)).toBe(1.5);
+    expect(roomPixelRatio(1325, 734, 1)).toBe(1);
+    const pixels = 2560 * 1440;
+    expect(pixels * roomPixelRatio(2560, 1440, 2) ** 2).toBeCloseTo(2_250_000);
+  });
+
+  it('can fall back to the smaller render target while keeping HDR', () => {
+    const ratio = roomPixelRatio(1325, 734, 2, true);
+    expect(ratio).toBeLessThan(roomPixelRatio(1325, 734, 2));
+    expect(1325 * 734 * ratio ** 2).toBeCloseTo(1_280_000);
+  });
+});
 
 describe('exterior city', () => {
   it('moves the track across the view faster than the far skyline during a sideways camera move', () => {
