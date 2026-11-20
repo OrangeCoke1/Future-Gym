@@ -1,5 +1,6 @@
 export const ROOM = { halfWidth: 3.06, height: 3.47, back: -4.42, front: 6.45 };
 export const HATCH = { y: 1.58, z: ROOM.front + 0.82, radius: 0.55 };
+export const WINDOW = { x: 0.33, y: 2.11, width: 4.51, height: 2.04, radius: 0.174 };
 
 export const BAYS = {
   cardio: { position: [-0.56, 0, -2.47], yaw: 0.03, scale: 1.23, size: [1.19, 1.56, 2.14], anchor: [0, 1.6, -0.1], focus: 1.05 },

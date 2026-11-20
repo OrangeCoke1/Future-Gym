@@ -1,11 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { PerspectiveCamera, Vector3 } from 'three';
+import { Box3, PerspectiveCamera, Vector3 } from 'three';
 import { ACT } from '../src/core/actions.js';
 import { STATIONS } from '../src/lobby/stations.js';
 import { FLIGHT_END, HATCH_CROSS, INTRO_END, SPLAT_LAND, flightAt, phaseAt } from '../src/lobby/timeline.js';
 import { createCamRig, stationApproach } from '../src/lobby/camRig.js';
+import { buildCity, CITY_FAR } from '../src/lobby/cityScene.js';
 import { samplePhotoDepth } from '../src/lobby/photoCapture.js';
-import { BAYS, HATCH, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
+import { BAYS, HATCH, ROOM, WALL_PLAQUES, WALL_PLAQUE_X, WALL_PLAQUE_Z } from '../src/lobby/layout.js';
+
+describe('exterior city', () => {
+  it('moves the track across the view faster than the far skyline during a sideways camera move', () => {
+    const city = buildCity(false);
+    city.updateMatrixWorld(true);
+    expect(new Box3().setFromObject(city.getObjectByName('river')).max.z).toBeLessThan(ROOM.back);
+    const track = new Box3().setFromObject(city.getObjectByName('elevated transit')).getCenter(new Vector3());
+    const skyline = new Box3().setFromObject(city.getObjectByName('distant skyline')).getCenter(new Vector3());
+    const camera = new PerspectiveCamera(48, 1.6, 0.05, CITY_FAR);
+    camera.position.set(-0.85, 1.58, 5.42);
+    camera.updateMatrixWorld();
+    const baseline = [track, skyline].map(point => point.clone().project(camera).x);
+    camera.position.x = 0.85;
+    camera.updateMatrixWorld();
+    const [nearShift, farShift] = [track, skyline].map((point, i) => baseline[i] - point.clone().project(camera).x);
+    expect(farShift).toBeGreaterThan(0);
+    expect(nearShift).toBeGreaterThan(2.5 * farShift);
+  });
+});
 
 describe('lobby stations', () => {
   it('uses unique IDs and real training actions', () => {
