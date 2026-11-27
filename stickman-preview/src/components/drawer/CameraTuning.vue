@@ -1,6 +1,6 @@
 <script setup>
 // Panel · camera following: how the figure trades jitter against lag in camera mode. Presets plus three sliders
-// (One Euro cutoff at rest, its rise with speed, prediction lead) and the leg mode; changes apply at once and are saved.
+// (One Euro cutoff at rest, its rise with speed, prediction lead), the glitch guard and the leg mode; changes apply at once and are saved.
 import { computed } from 'vue';
 import { useI18n } from '../../i18n/useI18n.js';
 import { useSettings } from '../../stores/settings.js';
@@ -124,6 +124,27 @@ const show = (k, v) => (k === 'minCut' ? v.toFixed(1) : String(Math.round(v * 10
     </div>
     <p class="note">
       {{ t('识别每根手指，小人的手会跟着握拳、张开和转动手腕；离摄像头近一些更准，会多占一些性能') }}
+    </p>
+    <div class="row">
+      <span class="note">{{ t('防跳变') }}</span>
+      <div
+        class="seg"
+        role="group"
+        :aria-label="t('防跳变')"
+      >
+        <button
+          v-for="[v, name] in [[true, '开'], [false, '关']]"
+          :key="name"
+          type="button"
+          :aria-pressed="String(tune.guard === v)"
+          @click="apply({ guard: v })"
+        >
+          {{ t(name) }}
+        </button>
+      </div>
+    </div>
+    <p class="note">
+      {{ t('丢掉识别偶尔出现的单帧乱跳和左右腿认反，小人不会突然抽一下') }}
     </p>
     <div class="row">
       <span class="note">{{ t('腿部') }}</span>

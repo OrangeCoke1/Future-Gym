@@ -103,6 +103,8 @@ export const I18N = {
   '识别精度': ['認識精度', 'Tracking accuracy'], '高精度': ['高精度', 'High'], '标准': ['標準', 'Standard'],
   '高精度模型，四肢位置更准，电脑较慢时帧率会降低': ['高精度モデル。手足の位置がより正確ですが、遅い PC ではフレームレートが下がります', 'High-accuracy model: limbs line up better, but the frame rate drops on slower computers'],
   '标准模型，速度更快，四肢偶尔对不准': ['標準モデル。速いですが、手足の位置が時々ずれます', 'Standard model: faster, but limbs are sometimes off'],
+  '防跳变': ['飛び値の除去', 'Glitch filter'],
+  '丢掉识别偶尔出现的单帧乱跳和左右腿认反，小人不会突然抽一下': ['認識がときどき出す1フレームだけの飛びや左右の脚の取り違えを捨て、フィギュアが急にピクッと動かないようにします', 'Drops the odd one-frame jump and left / right leg mix-up from the tracking, so the figure never twitches'],
   '手部识别': ['手の認識', 'Hand tracking'], '开': ['オン', 'On'], '关': ['オフ', 'Off'],
   '识别每根手指，小人的手会跟着握拳、张开和转动手腕；离摄像头近一些更准，会多占一些性能': ['指を1本ずつ認識し、フィギュアの手が握る・開く・手首の向きに追従します。カメラに近いほど正確で、処理は少し重くなります', 'Tracks each finger; the figure\'s hands follow your fist, open hand and wrist turn. More accurate closer to the camera, and uses a bit more processing'],
   '左手': ['左手', 'Left hand'], '右手': ['右手', 'Right hand'], '握拳': ['グー', 'Fist'], '张开': ['パー', 'Open'], '比 V': ['ピース', 'V sign'], '点赞': ['グッド', 'Thumbs up'], '指': ['指差し', 'Pointing'],
