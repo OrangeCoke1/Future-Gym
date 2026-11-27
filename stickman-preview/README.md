@@ -50,7 +50,7 @@ powershell -ExecutionPolicy Bypass -File serve.ps1 -Open
 | --- | --- |
 | `index.html`、`src/` | 应用本体（Vue 3 + JavaScript），结构见下方「代码结构」 |
 | `test/` | 单元测试（Vitest，`npm test`）：本机存储校验、摄像头跟随参数、12 个动作的骨长、心率 / 能量 / 心率设备超时 / 出汗 / 饮水记录、深蹲计数（标准规则只数深蹲，宽松规则浅蹲也数，用骨架合成的关键点测） |
-| `tools/` | 离线工具：从视频提取关键点（`pose-extract.mjs`）、测小人比真人慢多少（`follow-bench.mjs`）、用网页的计数规则数录像（`count-bench.mjs`）。用法见根目录 README。`tools/poses/` 里的录像数据不提交 |
+| `tools/` | 离线工具：从视频提取关键点（`pose-extract.mjs`）、测小人比真人慢多少、抖多少（`follow-bench.mjs`，`--truth` 配合 `pose-synth.mjs` 生成的带噪声/跳点的合成录像）、用网页的计数规则数录像（`count-bench.mjs`）。用法见根目录 README。`tools/poses/` 里的录像数据不提交 |
 | `public/three.min.js` | Three.js r149，只给 `poster/` 里的生成页面用；应用本身用 npm 的 `three@0.149.0`（同一版本） |
 | `public/male_body.glb` | 人体模型（CC BY 4.0，作者 Alexander Antipov），「原版」小人的身体形状来自它 |
 | `public/models/` | `xbot.glb`、`michelle.glb`：Adobe Mixamo 的两个带骨骼角色（约 3 MB 一个），面板里可以换成它们。只能在本应用里使用，不能把模型文件单独再分发 |

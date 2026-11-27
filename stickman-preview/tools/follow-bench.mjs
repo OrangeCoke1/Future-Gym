@@ -7,10 +7,13 @@
 // (centred Gaussian), in the same 2D / 3D fused space. Signals compared: knee, hip and elbow angles (°, both sides).
 //
 // Per signal: lag (ms, the shift of the truth that best matches the figure), err (RMS °, no shift), jitter (RMS
-// frame-to-frame acceleration of the figure while the person holds still, °), over (overshoot past the person's own turnaround, 95th percentile, °).
+// frame-to-frame acceleration of the figure while the person holds still, °), over (overshoot past the person's own turnaround, 95th percentile, °),
+// spike (99th percentile of the lag-corrected error, °: what detection glitches leave on the figure).
+// With --truth, each recording's truth is read from the file next to it with .clean.json (tools/pose-synth.mjs writes
+// those: the same motion without noise or glitches), instead of the smoothed recording itself.
 //
 // Usage (in stickman-preview/):
-//   node tools/follow-bench.mjs tools/poses/*.json [--cam 50] [--infer 35] [--minCut 1.5] [--beta 6] [--lead 60] [--sweep] [--json out.json]
+//   node tools/follow-bench.mjs tools/poses/*.json [--truth] [--cam 50] [--infer 35] [--minCut 1.5] [--beta 6] [--lead 60] [--sweep] [--json out.json]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { createCamPose, camIngest, camPredict, camSolve, fuse2d } from '../src/pose/camera.js';
@@ -23,16 +26,18 @@ const RENDER_DT = 1000 / 60;
 const SIGNALS = {
   knee: [['hipL', 'knL', 'anL'], ['hipR', 'knR', 'anR']],
   hip: [['shL', 'hipL', 'knL'], ['shR', 'hipR', 'knR']],
-  elbow: [['shL', 'elL', 'wrL'], ['shR', 'elR', 'wrR']]
+  elbow: [['shL', 'elL', 'wrL'], ['shR', 'elR', 'wrR']],
+  arm: [['elL', 'shL', 'hipL'], ['elR', 'shR', 'hipR']]
 };
 const LMI = { sh: 11, el: 13, wr: 15, hip: 23, kn: 25, an: 27 };
 
 /** parse args: files + options */
 export function parseArgs(argv) {
-  const o = { files: [], cam: 50, infer: 35, minCut: CAM_TUNE_DEFAULT.minCut, beta: CAM_TUNE_DEFAULT.beta, lead: CAM_TUNE_DEFAULT.lead, legs: CAM_TUNE_DEFAULT.legs, sweep: false, json: null };
+  const o = { files: [], cam: 50, infer: 35, minCut: CAM_TUNE_DEFAULT.minCut, beta: CAM_TUNE_DEFAULT.beta, lead: CAM_TUNE_DEFAULT.lead, legs: CAM_TUNE_DEFAULT.legs, sweep: false, truth: false, json: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--sweep') o.sweep = true;
+    else if (a === '--truth') o.truth = true;
     else if (a === '--json') o.json = argv[++i];
     else if (a === '--legs') o.legs = argv[++i];
     else if (a.startsWith('--') && a.slice(2) in o) o[a.slice(2)] = Number(argv[++i]);
@@ -136,6 +141,7 @@ function score(fig, tr, s) {
   };
   const rms = p => Math.sqrt(p.reduce((a, [o, g]) => a + (o - g) * (o - g), 0) / Math.max(1, p.length));
   const base = pairs(0);
+  const absErr = p => p.map(([o, g]) => Math.abs(o - g)).sort((x, y) => x - y);
   if (base.length < 30) return null;
   let lag = 0, best = Infinity;
   for (let L = -100; L <= 400; L += 5) { const e = rms(pairs(L)); if (e < best) { best = e; lag = L; } }
@@ -159,12 +165,13 @@ function score(fig, tr, s) {
   }
   ov.sort((x, y) => x - y);
   const over = ov.length ? ov[Math.floor(ov.length * 0.95)] : 0;
-  return { lag, err: rms(base), jitter: Math.sqrt(jSum / Math.max(1, jN)), over, range: range[1] - range[0], n: base.length };
+  const ae = absErr(pairs(lag)), spike = ae.length ? ae[Math.floor(ae.length * 0.99)] : 0;
+  return { lag, err: rms(base), spike, jitter: Math.sqrt(jSum / Math.max(1, jN)), over, range: range[1] - range[0], n: base.length };
 }
 
 export function bench(recs, tune, opt) {
   const per = recs.map(rec => {
-    const tr = truthSignals(rec), fig = simulate(rec, tune, opt), r = { name: rec.name };
+    const tr = truthSignals(rec.truth || rec), fig = simulate(rec, tune, opt), r = { name: rec.name };
     for (const s in SIGNALS) r[s] = score(fig, tr, s);
     return r;
   });
@@ -172,20 +179,25 @@ export function bench(recs, tune, opt) {
     const v = per.map(p => p[s]).filter(Boolean);
     if (!v.length) return null;
     const m = {};
-    for (const k of ['lag', 'err', 'jitter', 'over', 'range']) m[k] = v.reduce((a, x) => a + x[k], 0) / v.length;
+    for (const k of ['lag', 'err', 'spike', 'jitter', 'over', 'range']) m[k] = v.reduce((a, x) => a + x[k], 0) / v.length;
     return m;
   };
   return { per, mean: Object.fromEntries(Object.keys(SIGNALS).map(s => [s, mean(s)])) };
 }
 
 const f1 = x => (x == null ? '   -' : x.toFixed(1).padStart(6));
-const row = (label, m) => `${label.padEnd(28)}` + ['knee', 'hip', 'elbow'].map(s => (m[s] ? `${f1(m[s].lag)}${f1(m[s].err)}${f1(m[s].jitter)}${f1(m[s].over)}` : '      -     -     -     -')).join(' |');
-const head = () => `${''.padEnd(28)}` + ['knee', 'hip', 'elbow'].map(s => `  ${s.padEnd(22)}`).join('|') + '\n' + ''.padEnd(28) + ['', '', ''].map(() => '   lag   err   jit  over').join(' |');
+const SHOW = ['knee', 'hip', 'elbow', 'arm'];
+const row = (label, m) => `${label.padEnd(28)}` + SHOW.map(s => (m[s] ? `${f1(m[s].lag)}${f1(m[s].err)}${f1(m[s].spike)}${f1(m[s].jitter)}${f1(m[s].over)}` : '     -     -     -     -     -')).join(' |');
+const head = () => `${''.padEnd(28)}` + SHOW.map(s => `  ${s.padEnd(28)}`).join('|') + '\n' + ''.padEnd(28) + SHOW.map(() => '   lag   err spike   jit  over').join(' |');
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const opt = parseArgs(process.argv.slice(2));
   if (!opt.files.length) { console.error('usage: node tools/follow-bench.mjs <poses.json...> [--cam 50] [--infer 35] [--minCut] [--beta] [--lead] [--sweep]'); process.exit(1); }
-  const recs = opt.files.map(loadRec);
+  const recs = opt.files.filter(f => !f.endsWith('.clean.json')).map(f => {
+    const r = loadRec(f);
+    if (opt.truth) r.truth = loadRec(f.replace(/\.json$/, '.clean.json'));
+    return r;
+  });
   console.log(`latency model: camera ${opt.cam} ms + inference ${opt.infer} ms; lag in ms, err / jitter / overshoot in °`);
   const result = {};
   if (!opt.sweep) {
